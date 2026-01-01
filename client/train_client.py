@@ -7,7 +7,7 @@ from torch.utils.data import TensorDataset, DataLoader
 from client_com import Client_Com
 from model import Model
 import torch.nn as nn
-
+from config import Config
 
 
 def create_sequences(data, target, seq_len):
@@ -88,20 +88,36 @@ class Client:
         self.device = device
         self.lr = lr
         self.comms = Client_Com(server_ip, port)
+        self.training_complete = False
+
         try:
             self.client_id = self.comms.recieve_id()
-        except Exception:
+        except Exception as e:
+            print(f"Failed to initialize client: {e}")
             self.client_id = None
+            raise
 
     def train(self, epochs=1):
-        # receive global weights
+        # Receive global weights
         try:
             global_weights = self.comms.recieve_weights()
-            print("recieved weights")
+
+            # None means either error or completion signal
+            if global_weights is None:
+                if not self.comms.connected:
+                    print("Lost connection to server")
+                    self.training_complete = True
+                else:
+                    print("Training complete signal received")
+                    self.training_complete = True
+                return False
+
+            print("Received weights from server")
             self.model.load_state_dict(global_weights)
         except Exception as e:
             print(f"Failed to receive weights: {e}")
-            return
+            self.training_complete = True
+            return False
 
         self.model.train()
 
@@ -109,15 +125,16 @@ class Client:
         optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)
 
         for epoch in range(epochs):
-            print("training epoch, ", epoch)
+            print(f"Training epoch {epoch + 1}/{epochs}")
             total_loss = 0
             for X, y in self.train_loader:
                 X, y = X.to(self.device), y.to(self.device)
                 optimizer.zero_grad()
                 outputs = self.model(X)
                 loss = criterion(outputs, y)
+
                 if torch.isnan(loss) or torch.isinf(loss):
-                    print("Detected NaN/Inf loss — dumping diagnostics:")
+                    print("Detected NaN/Inf loss — stopping training")
                     try:
                         print(f"X any NaN: {torch.isnan(X).any().item()}, any Inf: {torch.isinf(X).any().item()}")
                         print(f"y any NaN: {torch.isnan(y).any().item()}, any Inf: {torch.isinf(y).any().item()}")
@@ -126,33 +143,53 @@ class Client:
                         print(f"outputs min/max: {outputs.min().item()}/{outputs.max().item()}")
                     except Exception as e:
                         print(f"Diagnostics failed: {e}")
-                    return
+                    self.training_complete = True
+                    return False
+
                 loss.backward()
                 optimizer.step()
-
                 total_loss += loss.item()
 
             avg_loss = total_loss / max(1, len(self.train_loader))
             print(f"Client {self.client_id} | Epoch {epoch+1}/{epochs} | Loss: {avg_loss:.4f}")
 
-        # send updated weights
+        # Send updated weights
         try:
-            self.comms.send(self.model.state_dict())
-            print("sending weights")
+            success = self.comms.send(self.model.state_dict())
+            if success:
+                print("Successfully sent weights to server")
+                return True
+            else:
+                print("Failed to send weights")
+                self.training_complete = True
+                return False
         except Exception as e:
             print(f"Failed to send weights: {e}")
+            self.training_complete = True
+            return False
 
     def start(self):
-        print("starting client loop")
-        while True:
+        print(f"Client {self.client_id} starting training loop...")
+        round_num = 0
+
+        while not self.training_complete:
             try:
-                self.train()
+                round_num += 1
+                print(f"\n=== Round {round_num} ===")
+                success = self.train()
+
+                if not success or self.training_complete:
+                    break
+
             except KeyboardInterrupt:
-                print("client shutting down")
+                print("\nClient interrupted by user")
                 break
             except Exception as e:
                 print(f"Client {self.client_id} error: {e}")
                 break
+
+        print(f"\nClient {self.client_id} shutting down after {round_num} round(s)")
+        self.comms.close()
 
 
 def main():
@@ -163,11 +200,8 @@ def main():
     parser.add_argument("--batch-size", type=int, default=32, help="local training batch size")
     parser.add_argument("--epochs", type=int, default=1, help="local training epochs per round")
     parser.add_argument("--lr", type=float, default=1e-3, help="learning rate")
-    parser.add_argument("--server-ip", default="127.0.0.1", help="server IP for Client_Com")
-    parser.add_argument("--port", type=int, default=8765, help="server port for Client_Com")
     parser.add_argument("--device", default=("cuda" if torch.cuda.is_available() else "cpu"), help="device to run training on")
     args = parser.parse_args()
-
 
     idx = args.index
     if idx is None:
@@ -189,15 +223,15 @@ def main():
 
     print(f"Processed CSV '{csv_name}' -> saved tensors to '{out_path}'")
     print(f"X_train shape: {X_train.shape}, y_train shape: {y_train.shape}")
-    print(X_train.shape[2])
-   
+
     device = torch.device(args.device)
     loader = build_dataloader_from_tensors(X_train, y_train, batch_size=args.batch_size, shuffle=True)
-    print(X_train.shape[2])
+
     model = Model(X_train.shape[2])
-    client = Client(device=device, train_loader=loader, model=model, lr=args.lr, server_ip=args.server_ip, port=args.port)
-    # run one training round then keep listening in start()
+
     try:
+        client = Client(device=device, train_loader=loader, model=model, lr=args.lr, 
+                       server_ip=Config.SERVER_IP, port=Config.SERVER_PORT)
         client.start()
     except Exception as e:
         print(f"Client failed to start: {e}")
