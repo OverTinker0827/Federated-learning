@@ -181,7 +181,7 @@ async def collect_updates(timeout=600):
     return updates
 
 async def federated_training():
-    global_model = Model(13).to(DEVICE)
+    global_model = Model(17).to(DEVICE)
     if os.path.exists("global_weights.pth"):
         print("Loaded existing weights.")
         global_model.load_state_dict(torch.load("global_weights.pth", map_location=DEVICE))

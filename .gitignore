@@ -1,3 +1,7 @@
 data/
 aiml/
 __pycache__/
+.venv
+blood_bank_data_1_processed.pt
+blood_bank_data_2_processed.pt
+blood_bank_data_3_processed.pt
