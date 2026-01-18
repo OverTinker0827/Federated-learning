@@ -171,14 +171,19 @@ async def collect_updates(timeout=600):
 
     async with clients_lock:
         tasks = [
-            recv_from_client(cid, reader)
+            asyncio.create_task(recv_from_client(cid, reader))   # ✅ FIX
             for cid, (reader, _) in clients.items()
         ]
 
     if tasks:
-        await asyncio.wait(tasks, timeout=timeout)
+        done, pending = await asyncio.wait(tasks, timeout=timeout)
+
+        # Optional cleanup
+        for task in pending:
+            task.cancel()
 
     return updates
+
 
 async def federated_training():
     global_model = Model(13).to(DEVICE)
