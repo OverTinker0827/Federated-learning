@@ -1,3 +1,4 @@
-data/
-aiml/
 __pycache__/
+.idea/
+.venv/
+dashboard/node_modules

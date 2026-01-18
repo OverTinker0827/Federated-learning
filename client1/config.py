@@ -8,7 +8,7 @@ class Config:
     SERVER_IP = "127.0.0.1"
     SERVER_PORT = 8765
     CLIENT_ID = None
-    CSV_PATH = "blood_bank_data_2.csv"
+    CSV_PATH = "blood_bank_data_1.csv"
     
     @classmethod
     def load_from_file(cls):
