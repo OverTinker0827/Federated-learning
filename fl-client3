@@ -1,0 +1,13 @@
+[Unit]
+Description=Federated Learning Client Node
+After=network.target
+
+[Service]
+User=ubuntu
+WorkingDirectory=/home/ubuntu/Federated-learning
+ExecStart=/home/ubuntu/Federated-learning/.venv/bin/python3 client2/run_api.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

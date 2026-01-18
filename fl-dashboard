@@ -1,0 +1,14 @@
+[Unit]
+Description=Federated Learning Dashboard
+After=network.target
+
+[Service]
+User=ubuntu
+WorkingDirectory=/home/ubuntu/Federated-learning/dashboard
+Environment=BROWSER=none
+ExecStart=/usr/bin/npm start
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

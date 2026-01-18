@@ -1,0 +1,15 @@
+[Unit]
+Description=Federated Learning Central Server
+After=network.target
+
+[Service]
+User=ubuntu
+WorkingDirectory=/home/ubuntu/Federated-learning
+ExecStart=/home/ubuntu/Federated-learning/.venv/bin/python3 server/server_api.py
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

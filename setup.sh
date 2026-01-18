@@ -5,8 +5,6 @@ echo "Updating system and installing base dependencies..."
 sudo apt-get update
 sudo apt-get install -y nodejs npm python3-pip python3-venv
 
-git clone https://github.com/OverTinker0827/Federated-learning.git
-cd Federated-learning
 # 2. Setup Python Virtual Environment
 echo "Setting up Python Virtual Environment..."
 # Create venv if it doesn't exist

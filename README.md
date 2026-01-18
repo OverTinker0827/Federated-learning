@@ -5,7 +5,7 @@ RUN dashboard using
 npm start
 ```
 
-COnfigure dashboard ip to public ip in .env file
+Configure dashboard ip to public ip in .env file
 
 RUN each client using 
 ```bash
@@ -13,7 +13,7 @@ python3 .clientx/run_api.py
 ```
  in its directory.
 
- Run server api endpoints using
+RUN server api endpoints using
  ```bash
 python3 ./server/run_api.py
 ```
