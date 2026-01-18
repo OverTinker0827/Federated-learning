@@ -10,6 +10,10 @@ function App() {
   const [serverRunning, setServerRunning] = useState(false);
   const [activeTab, setActiveTab] = useState('server');
   const [loading, setLoading] = useState(false);
+  const [serverConfig, setServerConfig] = useState({
+    epochs: 1,
+    num_clients: 2
+  });
 
   // Load initial config
   useEffect(() => {
@@ -17,6 +21,7 @@ function App() {
       try {
         const config = await ServerAPI.getConfig();
         setNumClients(config.num_clients || 2);
+        setServerConfig(config);
       } catch (error) {
         console.log('Could not load config - server may not be running');
       }
@@ -74,13 +79,16 @@ function App() {
         <main className="tab-content">
           {activeTab === 'server' && (
             <ServerControl
-              onConfigChange={(config) => setNumClients(config.num_clients)}
+              onConfigChange={(config) => {
+                setNumClients(config.num_clients);
+                setServerConfig(config);
+              }}
               onServerStatusChange={setServerRunning}
               numClients={numClients}
             />
           )}
           {activeTab === 'clients' && (
-            <ClientControl numClients={numClients} serverRunning={serverRunning} />
+            <ClientControl numClients={numClients} serverRunning={serverRunning} serverConfig={serverConfig} />
           )}
           {activeTab === 'logs' && <LogsViewer numClients={numClients} />}
         </main>

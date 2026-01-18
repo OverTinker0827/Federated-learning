@@ -82,11 +82,12 @@ def build_dataloader_from_tensors(X, y, batch_size=32, shuffle=True):
 
 
 class Client:
-    def __init__(self, device, train_loader, model, lr=1e-3, server_ip="127.0.0.1", port=8765):
+    def __init__(self, device, train_loader, model, lr=1e-3, server_ip="127.0.0.1", port=8765, epochs=1):
         self.model = model.to(device)
         self.train_loader = train_loader
         self.device = device
         self.lr = lr
+        self.epochs = epochs
         self.comms = Client_Com(server_ip, port)
         self.training_complete = False
 
@@ -176,7 +177,7 @@ class Client:
             try:
                 round_num += 1
                 print(f"\n=== Round {round_num} ===")
-                success = self.train()
+                success = self.train(epochs=self.epochs)
 
                 if not success or self.training_complete:
                     break
@@ -238,7 +239,7 @@ def main():
 
     try:
         client = Client(device=device, train_loader=loader, model=model, lr=args.lr, 
-                       server_ip=server_ip, port=server_port)
+                       server_ip=server_ip, port=server_port, epochs=args.epochs)
         client.start()
     except Exception as e:
         print(f"Client failed to start: {e}")
