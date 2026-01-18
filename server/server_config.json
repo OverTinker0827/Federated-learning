@@ -3,5 +3,5 @@
   "port": 5000,
   "num_clients": 2,
   "rounds": 10,
-  "epochs": 10
+  "epochs": 1
 }
