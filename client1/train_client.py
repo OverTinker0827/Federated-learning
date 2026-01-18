@@ -201,9 +201,12 @@ def main():
     parser.add_argument("--epochs", type=int, default=1, help="local training epochs per round")
     parser.add_argument("--lr", type=float, default=1e-3, help="learning rate")
     parser.add_argument("--device", default=("cuda" if torch.cuda.is_available() else "cpu"), help="device to run training on")
+    parser.add_argument("--client-id", type=int, default=None, help="client ID (used by API)")
+    parser.add_argument("--server-ip", default=None, help="server IP address (used by API)")
+    parser.add_argument("--server-port", type=int, default=None, help="server port (used by API)")
     args = parser.parse_args()
 
-    idx = args.index
+    idx = args.client_id
     if idx is None:
         print("Please provide an index number for the CSV filename (e.g. 2 -> blood_bank_data_2.csv)")
         return
@@ -229,9 +232,13 @@ def main():
 
     model = Model(X_train.shape[2])
 
+    # Use command-line args if provided, otherwise use Config defaults
+    server_ip = args.server_ip if args.server_ip else Config.SERVER_IP
+    server_port = args.server_port if args.server_port else Config.SERVER_PORT
+
     try:
         client = Client(device=device, train_loader=loader, model=model, lr=args.lr, 
-                       server_ip=Config.SERVER_IP, port=Config.SERVER_PORT)
+                       server_ip=server_ip, port=server_port)
         client.start()
     except Exception as e:
         print(f"Client failed to start: {e}")

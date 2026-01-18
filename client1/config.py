@@ -1,14 +1,14 @@
 import json
 import os
 
-CONFIG_FILE = 'server_config.json'
-
+CONFIG_FILE = 'client_config.json'
+Client_IP="127.0.0.1"
 class Config:
-    """Server Configuration"""
-    HOST = "127.0.0.1"
-    PORT = 5000
-    NUM_CLIENTS = 3
-    ROUNDS = 1
+    """Client Configuration"""
+    SERVER_IP = "127.0.0.1"
+    SERVER_PORT = 8765
+    CLIENT_ID = None
+    CSV_PATH = "blood_bank_data_2.csv"
     
     @classmethod
     def load_from_file(cls):
@@ -17,10 +17,10 @@ class Config:
             try:
                 with open(CONFIG_FILE, 'r') as f:
                     config_data = json.load(f)
-                    cls.HOST = config_data.get('host', cls.HOST)
-                    cls.PORT = config_data.get('port', cls.PORT)
-                    cls.NUM_CLIENTS = config_data.get('num_clients', cls.NUM_CLIENTS)
-                    cls.ROUNDS = config_data.get('rounds', cls.ROUNDS)
+                    cls.SERVER_IP = config_data.get('server_ip', cls.SERVER_IP)
+                    cls.SERVER_PORT = config_data.get('server_port', cls.SERVER_PORT)
+                    cls.CLIENT_ID = config_data.get('client_id', cls.CLIENT_ID)
+                    cls.CSV_PATH = config_data.get('csv_path', cls.CSV_PATH)
             except Exception as e:
                 print(f"Error loading config: {e}")
     
@@ -29,10 +29,10 @@ class Config:
         """Save configuration to JSON file"""
         try:
             config_data = {
-                'host': cls.HOST,
-                'port': cls.PORT,
-                'num_clients': cls.NUM_CLIENTS,
-                'rounds': cls.ROUNDS
+                'server_ip': cls.SERVER_IP,
+                'server_port': cls.SERVER_PORT,
+                'client_id': cls.CLIENT_ID,
+                'csv_path': cls.CSV_PATH
             }
             with open(CONFIG_FILE, 'w') as f:
                 json.dump(config_data, f, indent=2)
@@ -43,10 +43,10 @@ class Config:
     def to_dict(cls):
         """Convert config to dictionary"""
         return {
-            'host': cls.HOST,
-            'port': cls.PORT,
-            'num_clients': cls.NUM_CLIENTS,
-            'rounds': cls.ROUNDS
+            'server_ip': cls.SERVER_IP,
+            'server_port': cls.SERVER_PORT,
+            'client_id': cls.CLIENT_ID,
+            'csv_path': cls.CSV_PATH
         }
 
 # Load config on import
