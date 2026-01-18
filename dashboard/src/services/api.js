@@ -73,6 +73,16 @@ export const ServerAPI = {
       console.error('Error updating config:', error);
       throw error;
     }
+  },
+
+  async getMetrics() {
+    try {
+      const response = await axios.get(`${this.baseURL}/metrics`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching metrics:', error);
+      throw error;
+    }
   }
 };
 

@@ -9,6 +9,7 @@ class Config:
     PORT = 5000
     NUM_CLIENTS = 3
     ROUNDS = 1
+    EPOCHS = 1
     
     @classmethod
     def load_from_file(cls):
@@ -21,6 +22,7 @@ class Config:
                     cls.PORT = config_data.get('port', cls.PORT)
                     cls.NUM_CLIENTS = config_data.get('num_clients', cls.NUM_CLIENTS)
                     cls.ROUNDS = config_data.get('rounds', cls.ROUNDS)
+                    cls.EPOCHS = config_data.get('epochs', cls.EPOCHS)
             except Exception as e:
                 print(f"Error loading config: {e}")
     
@@ -32,7 +34,8 @@ class Config:
                 'host': cls.HOST,
                 'port': cls.PORT,
                 'num_clients': cls.NUM_CLIENTS,
-                'rounds': cls.ROUNDS
+                'rounds': cls.ROUNDS,
+                'epochs': cls.EPOCHS
             }
             with open(CONFIG_FILE, 'w') as f:
                 json.dump(config_data, f, indent=2)
@@ -46,7 +49,8 @@ class Config:
             'host': cls.HOST,
             'port': cls.PORT,
             'num_clients': cls.NUM_CLIENTS,
-            'rounds': cls.ROUNDS
+            'rounds': cls.ROUNDS,
+            'epochs': cls.EPOCHS
         }
 
 # Load config on import

@@ -102,8 +102,9 @@ class ClientAPI:
             data = request.get_json() or {}
             server_ip = data.get('server_ip', '127.0.0.1')
             server_port = data.get('server_port', 8765)
+            epochs = data.get('epochs', 1)
             
-            self.log(f'Starting client training, connecting to server at {server_ip}:{server_port}')
+            self.log(f'Starting client training with {epochs} epochs, connecting to server at {server_ip}:{server_port}')
             
             # Start train_client.py as subprocess
             train_script = os.path.join(os.path.dirname(__file__), 'train_client.py')
@@ -116,7 +117,7 @@ class ClientAPI:
                     '--client-id', str(self.client_id),
                     '--server-ip', server_ip,
                     '--server-port', str(server_port),
-                    ''
+                    '--epochs', str(epochs)
                 ],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,

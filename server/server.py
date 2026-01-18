@@ -233,6 +233,94 @@ async def federated_training():
         print(f"\nTraining completed successfully after {Config.ROUNDS} rounds!")
         print("saving values")
 
+    # After training completes (or stops), evaluate on test dataset if available
+    try:
+        test_path = os.path.join(os.path.dirname(__file__), 'test.csv')
+        if os.path.exists(test_path):
+            print("Running evaluation on test dataset...")
+            try:
+                import pandas as pd
+                from sklearn.preprocessing import StandardScaler, LabelEncoder
+                import json
+
+                def create_sequences(data, target, seq_len=7):
+                    X, y = [], []
+                    for i in range(len(data) - seq_len):
+                        X.append(data[i:i + seq_len])
+                        y.append(target[i + seq_len])
+                    return np.array(X, dtype=float), np.array(y, dtype=float)
+
+                df = pd.read_csv(test_path)
+                if 'Units_Used_tomorrow' in df.columns:
+                    # Encode categorical
+                    if 'Blood_Type' in df.columns:
+                        le = LabelEncoder()
+                        df['Blood_Type'] = le.fit_transform(df['Blood_Type'].astype(str))
+
+                    if 'Date' in df.columns:
+                        df = df.sort_values('Date')
+
+                    target = pd.to_numeric(df['Units_Used_tomorrow'], errors='coerce')
+                    target = target.fillna(method='ffill').fillna(method='bfill')
+                    target = target.values.astype(float)
+
+                    features = df.drop(columns=[c for c in ['Date', 'Units_Used_tomorrow'] if c in df.columns])
+                    features = features.apply(pd.to_numeric, errors='coerce')
+                    features = features.dropna(axis=1, how='all')
+                    non_constant_cols = features.columns[features.nunique() > 1]
+                    features = features[non_constant_cols]
+                    features = features.fillna(features.mean())
+
+                    scaler = StandardScaler()
+                    features_scaled = scaler.fit_transform(features)
+
+                    X_seq, y_seq = create_sequences(features_scaled, target, seq_len=7)
+
+                    if X_seq.size == 0:
+                        print('No sequences generated from test set; skipping evaluation')
+                    else:
+                        device = DEVICE
+                        global_model.to(device)
+                        global_model.eval()
+                        import torch as _torch
+                        with _torch.no_grad():
+                            X_tensor = _torch.tensor(X_seq, dtype=_torch.float32, device=device)
+                            preds = global_model(X_tensor).cpu().numpy()
+
+                        y_true = y_seq
+                        y_pred = preds
+
+                        # Compute metrics
+                        mse = float(np.mean((y_true - y_pred) ** 2))
+                        mae = float(np.mean(np.abs(y_true - y_pred)))
+                        rmse = float(np.sqrt(mse))
+                        ss_res = float(np.sum((y_true - y_pred) ** 2))
+                        ss_tot = float(np.sum((y_true - np.mean(y_true)) ** 2))
+                        r2 = 1.0 - ss_res / ss_tot if ss_tot != 0 else 0.0
+
+                        results = {
+                            'mse': mse,
+                            'mae': mae,
+                            'rmse': rmse,
+                            'r2': r2,
+                            'num_samples': int(len(y_true))
+                        }
+
+                        # Save results
+                        results_path = os.path.join(os.path.dirname(__file__), 'test_results.json')
+                        with open(results_path, 'w') as fh:
+                            json.dump(results, fh)
+
+                        print('Evaluation results saved to', results_path)
+                else:
+                    print("Test CSV does not contain 'Units_Used_tomorrow' target; skipping evaluation")
+            except Exception as e:
+                print('Error during evaluation:', e)
+        else:
+            print('No test.csv found; skipping evaluation')
+    except Exception:
+        pass
+
     training_complete.set()
 
     # Give time for completion signals to be sent

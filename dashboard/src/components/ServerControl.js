@@ -7,18 +7,28 @@ function ServerControl({ onConfigChange, onServerStatusChange, numClients }) {
     host: '127.0.0.1',
     port: 5000,
     num_clients: 2,
-    rounds: 1
+    rounds: 1,
+    epochs: 1
   });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState('');
   const [serverRunning, setServerRunning] = useState(false);
   const [editMode, setEditMode] = useState(false);
+  const [metrics, setMetrics] = useState(null);
+  const [metricsLoading, setMetricsLoading] = useState(false);
 
-  // Load config on mount
+  // Load config on mount and set up metrics polling
   useEffect(() => {
     loadConfig();
     checkServerStatus();
+    
+    // Poll for metrics every 2 seconds continuously
+    const metricsInterval = setInterval(fetchMetrics, 2000);
+    
+    return () => {
+      if (metricsInterval) clearInterval(metricsInterval);
+    };
   }, []);
 
   const loadConfig = async () => {
@@ -49,7 +59,7 @@ function ServerControl({ onConfigChange, onServerStatusChange, numClients }) {
     const { name, value } = e.target;
     setConfig(prev => ({
       ...prev,
-      [name]: name === 'num_clients' || name === 'port' || name === 'rounds'
+      [name]: name === 'num_clients' || name === 'port' || name === 'rounds' || name === 'epochs'
         ? parseInt(value)
         : value
     }));
@@ -94,6 +104,19 @@ function ServerControl({ onConfigChange, onServerStatusChange, numClients }) {
       showMessage(`Failed to stop server: ${error.message}`, 'error');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchMetrics = async () => {
+    try {
+      setMetricsLoading(true);
+      const data = await ServerAPI.getMetrics();
+      setMetrics(data.metrics || null);
+    } catch (error) {
+      // Silently fail if metrics not available yet
+      setMetrics(null);
+    } finally {
+      setMetricsLoading(false);
     }
   };
 
@@ -147,6 +170,20 @@ function ServerControl({ onConfigChange, onServerStatusChange, numClients }) {
               type="number"
               name="rounds"
               value={config.rounds}
+              onChange={handleInputChange}
+              disabled={!editMode || serverRunning}
+              min="1"
+              max="100"
+              className="config-input"
+            />
+          </div>
+
+          <div className="config-row">
+            <label>Epochs per Round</label>
+            <input
+              type="number"
+              name="epochs"
+              value={config.epochs}
               onChange={handleInputChange}
               disabled={!editMode || serverRunning}
               min="1"
@@ -215,6 +252,34 @@ function ServerControl({ onConfigChange, onServerStatusChange, numClients }) {
           </button>
         </div>
       </div>
+
+      {metrics && (
+        <div className="control-section">
+          <h2>Test Results (Model Evaluation Metrics)</h2>
+          <div className="metrics-panel">
+            <div className="metric-row">
+              <span className="metric-label">MSE (Mean Squared Error):</span>
+              <span className="metric-value">{metrics.mse.toFixed(4)}</span>
+            </div>
+            <div className="metric-row">
+              <span className="metric-label">MAE (Mean Absolute Error):</span>
+              <span className="metric-value">{metrics.mae.toFixed(4)}</span>
+            </div>
+            <div className="metric-row">
+              <span className="metric-label">RMSE (Root Mean Squared Error):</span>
+              <span className="metric-value">{metrics.rmse.toFixed(4)}</span>
+            </div>
+            <div className="metric-row">
+              <span className="metric-label">R² Score:</span>
+              <span className="metric-value">{metrics.r2.toFixed(4)}</span>
+            </div>
+            <div className="metric-row">
+              <span className="metric-label">Samples Tested:</span>
+              <span className="metric-value">{metrics.num_samples}</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {message && (
         <div className={`message message-${messageType}`}>

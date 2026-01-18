@@ -59,7 +59,22 @@ class ServerAPI:
         self.app.route('/stop', methods=['POST'])(self.stop_server)
         self.app.route('/status', methods=['GET'])(self.get_status)
         self.app.route('/logs', methods=['GET'])(self.get_logs)
+        self.app.route('/metrics', methods=['GET'])(self.get_metrics)
         self.app.route('/logs/clear', methods=['POST'])(self.clear_logs)
+
+    def get_metrics(self):
+        """Return evaluation metrics computed by the training server (if any)"""
+        try:
+            results_path = os.path.join(os.path.dirname(__file__), 'test_results.json')
+            if not os.path.exists(results_path):
+                return jsonify({'error': 'No metrics available'}), 404
+            import json
+            with open(results_path, 'r') as fh:
+                data = json.load(fh)
+            return jsonify({'metrics': data}), 200
+        except Exception as e:
+            self.log(f'Error getting metrics: {e}', 'ERROR')
+            return jsonify({'error': str(e)}), 500
 
     def log(self, message, level='INFO'):
         """Add message to logs"""
@@ -103,6 +118,8 @@ class ServerAPI:
                 Config.NUM_CLIENTS = data['num_clients']
             if 'rounds' in data:
                 Config.ROUNDS = data['rounds']
+            if 'epochs' in data:
+                Config.EPOCHS = data['epochs']
             
             # Save to file
             Config.save_to_file()

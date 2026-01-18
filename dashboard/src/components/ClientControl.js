@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ClientAPI } from '../services/api';
 import './ClientControl.css';
 
-function ClientControl({ numClients, serverRunning }) {
+function ClientControl({ numClients, serverRunning, serverConfig }) {
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState({});
   const [message, setMessage] = useState('');
@@ -53,7 +53,8 @@ function ClientControl({ numClients, serverRunning }) {
       setLoading(prev => ({ ...prev, [clientId]: true }));
       const config = {
         server_ip: '127.0.0.1',
-        server_port: 8765
+        server_port: 8765,
+        epochs: serverConfig?.epochs || 1
       };
       await ClientAPI.startClient(clientId, config);
       await checkClientStatus(clientId);

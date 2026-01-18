@@ -206,6 +206,40 @@
   }
 }
 
+.metrics-panel {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.metric-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 15px;
+  background: #f8fafc;
+  border-radius: 6px;
+  border-left: 4px solid #667eea;
+}
+
+.metric-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.metric-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
 @media (max-width: 768px) {
   .config-panel {
     grid-template-columns: 1fr;
