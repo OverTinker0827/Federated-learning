@@ -2,10 +2,10 @@ import json
 import os
 
 CONFIG_FILE = 'client_config.json'
-Client_IP="127.0.0.1"
+Client_IP="172.31.13.139"
 class Config:
     """Client Configuration"""
-    SERVER_IP = "127.0.0.1"
+    SERVER_IP = "172.31.1.193"
     SERVER_PORT = 8765
     CLIENT_ID = None
     CSV_PATH = "blood_bank_data_2.csv"
