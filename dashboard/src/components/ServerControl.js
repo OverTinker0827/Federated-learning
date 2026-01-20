@@ -277,7 +277,75 @@ function ServerControl({ onConfigChange, onServerStatusChange, numClients }) {
               <span className="metric-label">Samples Tested:</span>
               <span className="metric-value">{metrics.num_samples}</span>
             </div>
+            {metrics.feature_dim && (
+              <div className="metric-row">
+                <span className="metric-label">Features:</span>
+                <span className="metric-value">{metrics.feature_dim}</span>
+              </div>
+            )}
+            {metrics.seq_len && (
+              <div className="metric-row">
+                <span className="metric-label">Sequence Length:</span>
+                <span className="metric-value">{metrics.seq_len} days</span>
+              </div>
+            )}
           </div>
+
+          {metrics.prediction_stats && (
+            <div className="prediction-stats">
+              <h3>Prediction Statistics</h3>
+              <div className="stats-grid">
+                <div className="stat-item">
+                  <span className="stat-label">Actual Range:</span>
+                  <span className="stat-value">
+                    {metrics.prediction_stats.y_true_min.toFixed(2)} - {metrics.prediction_stats.y_true_max.toFixed(2)}
+                  </span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">Predicted Range:</span>
+                  <span className="stat-value">
+                    {metrics.prediction_stats.y_pred_min.toFixed(2)} - {metrics.prediction_stats.y_pred_max.toFixed(2)}
+                  </span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">Actual Mean:</span>
+                  <span className="stat-value">{metrics.prediction_stats.y_true_mean.toFixed(2)}</span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">Predicted Mean:</span>
+                  <span className="stat-value">{metrics.prediction_stats.y_pred_mean.toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {metrics.sample_predictions && metrics.sample_predictions.length > 0 && (
+            <div className="sample-predictions">
+              <h3>Sample Predictions (Units Used Tomorrow)</h3>
+              <div className="predictions-table-container">
+                <table className="predictions-table">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Actual</th>
+                      <th>Predicted</th>
+                      <th>Error</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {metrics.sample_predictions.map((pred, idx) => (
+                      <tr key={idx} className={pred.error > 10 ? 'high-error' : ''}>
+                        <td>{idx + 1}</td>
+                        <td>{pred.actual}</td>
+                        <td>{pred.predicted}</td>
+                        <td className={pred.error > 10 ? 'error-high' : 'error-low'}>{pred.error}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

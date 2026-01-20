@@ -240,6 +240,122 @@
   color: #1e293b;
 }
 
+/* Prediction Statistics */
+.prediction-stats {
+  margin-top: 20px;
+  padding: 20px;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.prediction-stats h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #475569;
+  margin-bottom: 15px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  background: #f8fafc;
+  border-radius: 6px;
+}
+
+.stat-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+}
+
+.stat-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+/* Sample Predictions Table */
+.sample-predictions {
+  margin-top: 20px;
+}
+
+.sample-predictions h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #475569;
+  margin-bottom: 15px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.predictions-table-container {
+  max-height: 400px;
+  overflow-y: auto;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.predictions-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+}
+
+.predictions-table th {
+  position: sticky;
+  top: 0;
+  background: #f1f5f9;
+  padding: 12px 16px;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.predictions-table td {
+  padding: 10px 16px;
+  font-size: 14px;
+  color: #1e293b;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.predictions-table tbody tr:hover {
+  background: #f8fafc;
+}
+
+.predictions-table tbody tr.high-error {
+  background: #fef2f2;
+}
+
+.predictions-table tbody tr.high-error:hover {
+  background: #fee2e2;
+}
+
+.error-low {
+  color: #16a34a;
+  font-weight: 600;
+}
+
+.error-high {
+  color: #dc2626;
+  font-weight: 600;
+}
+
 @media (max-width: 768px) {
   .config-panel {
     grid-template-columns: 1fr;

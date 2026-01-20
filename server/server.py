@@ -240,89 +240,86 @@ async def federated_training():
 
     # After training completes (or stops), evaluate on test dataset if available
     try:
-        test_path = os.path.join(os.path.dirname(__file__), 'test.csv')
-        if os.path.exists(test_path):
+        test_data_path = os.path.join(os.path.dirname(__file__), 'test_data.pt')
+        if os.path.exists(test_data_path):
             print("Running evaluation on test dataset...")
             try:
-                import pandas as pd
-                from sklearn.preprocessing import StandardScaler, LabelEncoder
                 import json
 
-                def create_sequences(data, target, seq_len=7):
-                    X, y = [], []
-                    for i in range(len(data) - seq_len):
-                        X.append(data[i:i + seq_len])
-                        y.append(target[i + seq_len])
-                    return np.array(X, dtype=float), np.array(y, dtype=float)
+                # Load preprocessed test data
+                test_data = torch.load(test_data_path, map_location=DEVICE, weights_only=False)
+                X_test = test_data['X_test']
+                y_test = test_data['y_test']
+                metadata = test_data.get('metadata', {})
 
-                df = pd.read_csv(test_path)
-                if 'Units_Used_tomorrow' in df.columns:
-                    # Encode categorical
-                    if 'Blood_Type' in df.columns:
-                        le = LabelEncoder()
-                        df['Blood_Type'] = le.fit_transform(df['Blood_Type'].astype(str))
+                print(f"Test data loaded: {len(X_test)} samples, {X_test.shape[2]} features")
 
-                    if 'Date' in df.columns:
-                        df = df.sort_values('Date')
-
-                    target = pd.to_numeric(df['Units_Used_tomorrow'], errors='coerce')
-                    target = target.fillna(method='ffill').fillna(method='bfill')
-                    target = target.values.astype(float)
-
-                    features = df.drop(columns=[c for c in ['Date', 'Units_Used_tomorrow'] if c in df.columns])
-                    features = features.apply(pd.to_numeric, errors='coerce')
-                    features = features.dropna(axis=1, how='all')
-                    non_constant_cols = features.columns[features.nunique() > 1]
-                    features = features[non_constant_cols]
-                    features = features.fillna(features.mean())
-
-                    scaler = StandardScaler()
-                    features_scaled = scaler.fit_transform(features)
-
-                    X_seq, y_seq = create_sequences(features_scaled, target, seq_len=7)
-
-                    if X_seq.size == 0:
-                        print('No sequences generated from test set; skipping evaluation')
-                    else:
-                        device = DEVICE
-                        global_model.to(device)
-                        global_model.eval()
-                        import torch as _torch
-                        with _torch.no_grad():
-                            X_tensor = _torch.tensor(X_seq, dtype=_torch.float32, device=device)
-                            preds = global_model(X_tensor).cpu().numpy()
-
-                        y_true = y_seq
-                        y_pred = preds
-
-                        # Compute metrics
-                        mse = float(np.mean((y_true - y_pred) ** 2))
-                        mae = float(np.mean(np.abs(y_true - y_pred)))
-                        rmse = float(np.sqrt(mse))
-                        ss_res = float(np.sum((y_true - y_pred) ** 2))
-                        ss_tot = float(np.sum((y_true - np.mean(y_true)) ** 2))
-                        r2 = 1.0 - ss_res / ss_tot if ss_tot != 0 else 0.0
-
-                        results = {
-                            'mse': mse,
-                            'mae': mae,
-                            'rmse': rmse,
-                            'r2': r2,
-                            'num_samples': int(len(y_true))
-                        }
-
-                        # Save results
-                        results_path = os.path.join(os.path.dirname(__file__), 'test_results.json')
-                        with open(results_path, 'w') as fh:
-                            json.dump(results, fh)
-
-                        print('Evaluation results saved to', results_path)
+                if len(X_test) == 0:
+                    print('No test samples available; skipping evaluation')
                 else:
-                    print("Test CSV does not contain 'Units_Used_tomorrow' target; skipping evaluation")
+                    device = DEVICE
+                    global_model.to(device)
+                    global_model.eval()
+                    
+                    with torch.no_grad():
+                        X_tensor = X_test.to(device)
+                        y_tensor = y_test.to(device)
+                        preds = global_model(X_tensor).cpu().numpy()
+
+                    y_true = y_test.cpu().numpy()
+                    y_pred = preds
+
+                    # Compute metrics
+                    mse = float(np.mean((y_true - y_pred) ** 2))
+                    mae = float(np.mean(np.abs(y_true - y_pred)))
+                    rmse = float(np.sqrt(mse))
+                    ss_res = float(np.sum((y_true - y_pred) ** 2))
+                    ss_tot = float(np.sum((y_true - np.mean(y_true)) ** 2))
+                    r2 = 1.0 - ss_res / ss_tot if ss_tot != 0 else 0.0
+
+                    # Sample predictions for display (first 20 samples)
+                    num_display = min(20, len(y_true))
+                    sample_predictions = [
+                        {
+                            "actual": round(float(y_true[i]), 2),
+                            "predicted": round(float(y_pred[i]), 2),
+                            "error": round(float(abs(y_true[i] - y_pred[i])), 2)
+                        }
+                        for i in range(num_display)
+                    ]
+
+                    results = {
+                        'mse': mse,
+                        'mae': mae,
+                        'rmse': rmse,
+                        'r2': r2,
+                        'num_samples': int(len(y_true)),
+                        'feature_dim': int(metadata.get('feature_dim', X_test.shape[2])),
+                        'seq_len': int(metadata.get('seq_len', X_test.shape[1])),
+                        'sample_predictions': sample_predictions,
+                        'prediction_stats': {
+                            'y_true_min': float(np.min(y_true)),
+                            'y_true_max': float(np.max(y_true)),
+                            'y_true_mean': float(np.mean(y_true)),
+                            'y_pred_min': float(np.min(y_pred)),
+                            'y_pred_max': float(np.max(y_pred)),
+                            'y_pred_mean': float(np.mean(y_pred))
+                        }
+                    }
+
+                    # Save results
+                    results_path = os.path.join(os.path.dirname(__file__), 'test_results.json')
+                    with open(results_path, 'w') as fh:
+                        json.dump(results, fh, indent=2)
+
+                    print(f'Evaluation results: MSE={mse:.4f}, MAE={mae:.4f}, RMSE={rmse:.4f}, R²={r2:.4f}')
+                    print('Evaluation results saved to', results_path)
             except Exception as e:
                 print('Error during evaluation:', e)
+                import traceback
+                traceback.print_exc()
         else:
-            print('No test.csv found; skipping evaluation')
+            print('No test_data.pt found; skipping evaluation')
     except Exception:
         pass
 

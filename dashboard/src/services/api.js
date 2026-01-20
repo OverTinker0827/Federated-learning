@@ -3,7 +3,7 @@ import clientConfig from '../client_config.json';
 
 // Server API service
 export const ServerAPI = {
-  baseURL: process.env.REACT_APP_SERVER_URL || 'http://127.0.0.1:5000',
+  baseURL: process.env.REACT_APP_SERVER_URL || 'http://localhost:5000',
 
   async getConfig() {
     try {
@@ -81,6 +81,26 @@ export const ServerAPI = {
       return response.data;
     } catch (error) {
       console.error('Error fetching metrics:', error);
+      throw error;
+    }
+  },
+
+  async getFeatureInfo() {
+    try {
+      const response = await axios.get(`${this.baseURL}/feature-info`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching feature info:', error);
+      throw error;
+    }
+  },
+
+  async predict(features) {
+    try {
+      const response = await axios.post(`${this.baseURL}/predict`, { features });
+      return response.data;
+    } catch (error) {
+      console.error('Error making prediction:', error);
       throw error;
     }
   }

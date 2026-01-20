@@ -1,7 +1,6 @@
 import argparse
-import pandas as pd
+import os
 import torch
-from sklearn.preprocessing import StandardScaler, LabelEncoder
 from torch.utils.data import TensorDataset, DataLoader
 
 from client_com import Client_Com
@@ -10,70 +9,15 @@ import torch.nn as nn
 from config import Config
 
 
-def create_sequences(data, target, seq_len):
-    X, y = [], []
-    for i in range(len(data) - seq_len):
-        X.append(data[i:i + seq_len])
-        y.append(target[i + seq_len])
-    return torch.tensor(X, dtype=torch.float32), torch.tensor(y, dtype=torch.float32)
-
-
-def load_and_process(csv_path, seq_len=7):
-    df = pd.read_csv(csv_path)
-
-    # encode categorical and sort by date
-    if "Blood_Type" in df.columns:
-        le = LabelEncoder()
-        df["Blood_Type"] = le.fit_transform(df["Blood_Type"])
-
-    if "Date" in df.columns:
-        df = df.sort_values("Date")
-
-    # expect target column named 'Units_Used_tomorrow'
-    if "Units_Used_tomorrow" not in df.columns:
-        raise ValueError("CSV must contain 'Units_Used_tomorrow' column as target")
-
-    features = df.drop(columns=[c for c in ["Date", "Units_Used_tomorrow"] if c in df.columns])
-
-    # force numeric (non-numeric -> NaN)
-    features = features.apply(pd.to_numeric, errors="coerce")
-
-    # drop columns that are fully NaN
-    features = features.dropna(axis=1, how="all")
-
-    # ensure target is numeric and handle NaNs
-    target = pd.to_numeric(df["Units_Used_tomorrow"], errors="coerce")
-    if target.isna().any():
-        print(f"Warning: found {int(target.isna().sum())} NaN(s) in 'Units_Used_tomorrow'; imputing.")
-        # try forward/back fill to preserve sequence continuity
-        target = target.fillna(method="ffill").fillna(method="bfill")
-        # if still NaN (all values were NaN), fill with mean (will be NaN then - guard)
-        if target.isna().any():
-            mean_val = target.mean()
-            if pd.isna(mean_val):
-                mean_val = 0.0
-            target = target.fillna(mean_val)
-    target = target.values.astype(float)
-    # drop zero-variance columns
-    non_constant_cols = features.columns[features.nunique() > 1]
-    features = features[non_constant_cols]
-    features = features.fillna(features.mean())
-
-    scaler = StandardScaler()
-    features = scaler.fit_transform(features)
-
-    X_seq, y_seq = create_sequences(features, target, seq_len)
-
-    split = int(1 * len(X_seq))
-    X_train, X_test = X_seq[:split], X_seq[split:]
-    y_train, y_test = y_seq[:split], y_seq[split:]
-
-    return X_train, X_test, y_train, y_test
-
-
-def save_processed(X_train, y_train, out_path):
-    # save tensors in a format easy to load and convert to DataLoader in other scripts
-    torch.save({"X_train": X_train, "y_train": y_train}, out_path)
+def load_preprocessed(pt_path):
+    """Load preprocessed tensors from .pt file created by preprocessing.py"""
+    if not os.path.exists(pt_path):
+        raise FileNotFoundError(f"Preprocessed file not found: {pt_path}")
+    
+    data = torch.load(pt_path, weights_only=False)
+    X_train = data["X_train"]
+    y_train = data["y_train"]
+    return X_train, y_train
 
 
 def build_dataloader_from_tensors(X, y, batch_size=32, shuffle=True):
@@ -194,10 +138,8 @@ class Client:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Process blood bank CSV into client-ready tensors")
-    parser.add_argument("index", nargs='?', default=None, help="index number used in CSV filename (e.g. 2 -> blood_bank_data_2.csv)")
-    parser.add_argument("--seq", type=int, default=7, help="sequence length")
-    parser.add_argument("--out", default=None, help="output .pt path (defaults to processed file next to CSV)")
+    parser = argparse.ArgumentParser(description="Federated learning client using preprocessed data")
+    parser.add_argument("index", nargs='?', default=None, help="index number used in preprocessed filename (e.g. 2 -> blood_bank_data_2_processed.pt)")
     parser.add_argument("--batch-size", type=int, default=32, help="local training batch size")
     parser.add_argument("--epochs", type=int, default=1, help="local training epochs per round")
     parser.add_argument("--lr", type=float, default=1e-3, help="learning rate")
@@ -209,23 +151,23 @@ def main():
 
     idx = args.client_id
     if idx is None:
-        print("Please provide an index number for the CSV filename (e.g. 2 -> blood_bank_data_2.csv)")
+        print("Please provide a client ID (--client-id)")
         return
-    csv_name = f"blood_bank_data_{idx}.csv"
-
+    
+    # Load preprocessed .pt file created by preprocessing.py
+    pt_path = f"blood_bank_data_{idx}_processed.pt"
+    
     try:
-        X_train, X_test, y_train, y_test = load_and_process(csv_name, seq_len=args.seq)
+        X_train, y_train = load_preprocessed(pt_path)
     except FileNotFoundError:
-        print(f"CSV file not found: {csv_name}")
+        print(f"Preprocessed file not found: {pt_path}")
+        print("Please run preprocessing.py first to generate the preprocessed data.")
         return
     except Exception as e:
-        print(f"Error processing CSV: {e}")
+        print(f"Error loading preprocessed data: {e}")
         return
 
-    out_path = args.out or f"blood_bank_data_{idx}_processed.pt"
-    save_processed(X_train, y_train, out_path)
-
-    print(f"Processed CSV '{csv_name}' -> saved tensors to '{out_path}'")
+    print(f"Loaded preprocessed data from '{pt_path}'")
     print(f"X_train shape: {X_train.shape}, y_train shape: {y_train.shape}")
 
     device = torch.device(args.device)

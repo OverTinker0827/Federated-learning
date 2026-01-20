@@ -1,0 +1,119 @@
+{
+  "mse": 93.48435974121094,
+  "mae": 6.458386421203613,
+  "rmse": 9.668731030554678,
+  "r2": -0.0019588832000279055,
+  "num_samples": 300,
+  "feature_dim": 13,
+  "seq_len": 7,
+  "sample_predictions": [
+    {
+      "actual": 15.0,
+      "predicted": 19.29,
+      "error": 4.29
+    },
+    {
+      "actual": 10.0,
+      "predicted": 19.28,
+      "error": 9.28
+    },
+    {
+      "actual": 13.0,
+      "predicted": 19.29,
+      "error": 6.29
+    },
+    {
+      "actual": 19.0,
+      "predicted": 19.28,
+      "error": 0.28
+    },
+    {
+      "actual": 15.0,
+      "predicted": 19.29,
+      "error": 4.29
+    },
+    {
+      "actual": 14.0,
+      "predicted": 19.28,
+      "error": 5.28
+    },
+    {
+      "actual": 20.0,
+      "predicted": 19.29,
+      "error": 0.71
+    },
+    {
+      "actual": 15.0,
+      "predicted": 19.29,
+      "error": 4.29
+    },
+    {
+      "actual": 13.0,
+      "predicted": 19.28,
+      "error": 6.28
+    },
+    {
+      "actual": 18.0,
+      "predicted": 19.29,
+      "error": 1.29
+    },
+    {
+      "actual": 17.0,
+      "predicted": 19.29,
+      "error": 2.29
+    },
+    {
+      "actual": 21.0,
+      "predicted": 19.29,
+      "error": 1.71
+    },
+    {
+      "actual": 18.0,
+      "predicted": 19.29,
+      "error": 1.29
+    },
+    {
+      "actual": 17.0,
+      "predicted": 19.29,
+      "error": 2.29
+    },
+    {
+      "actual": 15.0,
+      "predicted": 19.29,
+      "error": 4.29
+    },
+    {
+      "actual": 14.0,
+      "predicted": 19.29,
+      "error": 5.29
+    },
+    {
+      "actual": 18.0,
+      "predicted": 19.28,
+      "error": 1.28
+    },
+    {
+      "actual": 29.0,
+      "predicted": 19.28,
+      "error": 9.72
+    },
+    {
+      "actual": 19.0,
+      "predicted": 19.29,
+      "error": 0.29
+    },
+    {
+      "actual": 16.0,
+      "predicted": 19.29,
+      "error": 3.29
+    }
+  ],
+  "prediction_stats": {
+    "y_true_min": 7.0,
+    "y_true_max": 73.0,
+    "y_true_mean": 19.719999313354492,
+    "y_pred_min": 19.250459671020508,
+    "y_pred_max": 19.286781311035156,
+    "y_pred_mean": 19.28419303894043
+  }
+}
