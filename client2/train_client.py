@@ -20,11 +20,7 @@ def load_preprocessed(pt_path):
     return X_train, y_train
 
 
-def build_dataloader_from_tensors(X, y, batch_size=32, shuffle=False):
-    """
-    Build DataLoader from tensors.
-    For time-series data, shuffle=False preserves temporal order.
-    """
+def build_dataloader_from_tensors(X, y, batch_size=32, shuffle=True):
     ds = TensorDataset(X, y)
     return DataLoader(ds, batch_size=batch_size, shuffle=shuffle)
 
@@ -177,8 +173,7 @@ def main():
     print(f"X_train shape: {X_train.shape}, y_train shape: {y_train.shape}")
 
     device = torch.device(args.device)
-    # shuffle=False for time-series data to preserve temporal order
-    loader = build_dataloader_from_tensors(X_train, y_train, batch_size=args.batch_size, shuffle=False)
+    loader = build_dataloader_from_tensors(X_train, y_train, batch_size=args.batch_size, shuffle=True)
 
     model = Model(X_train.shape[2])
 
