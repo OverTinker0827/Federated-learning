@@ -188,8 +188,12 @@ async def collect_updates(timeout=600):
 async def federated_training():
     global_model = Model(13).to(DEVICE)
     if os.path.exists("global_weights.pth"):
-        print("Loaded existing weights.")
-        global_model.load_state_dict(torch.load("global_weights.pth", map_location=DEVICE))
+        try:
+            state = torch.load("global_weights.pth", map_location=DEVICE)
+            global_model.load_state_dict(state)
+            print("Loaded existing weights.")
+        except Exception as e:
+            print(f"Could not load existing weights (shape mismatch or corrupt file): {e}. Starting fresh.")
 
     print("Waiting for all clients to connect...")
     await all_clients_connected.wait()
@@ -264,7 +268,8 @@ async def federated_training():
                     with torch.no_grad():
                         X_tensor = X_test.to(device)
                         y_tensor = y_test.to(device)
-                        preds = global_model(X_tensor).cpu().numpy()
+                        preds_tensor = global_model(X_tensor)
+                        preds = preds_tensor.cpu().numpy()
 
                     y_true = y_test.cpu().numpy()
                     y_pred = preds
@@ -276,6 +281,14 @@ async def federated_training():
                     ss_res = float(np.sum((y_true - y_pred) ** 2))
                     ss_tot = float(np.sum((y_true - np.mean(y_true)) ** 2))
                     r2 = 1.0 - ss_res / ss_tot if ss_tot != 0 else 0.0
+
+                    # Sanity-check metrics with PyTorch as well
+                    try:
+                        torch_mse = torch.mean((y_tensor - preds_tensor.to(device)) ** 2).item()
+                        torch_mae = torch.mean(torch.abs(y_tensor - preds_tensor.to(device))).item()
+                        print(f"Sanity check (PyTorch): MSE={torch_mse:.4f}, MAE={torch_mae:.4f}, RMSE={np.sqrt(torch_mse):.4f}")
+                    except Exception as e:
+                        print(f"Sanity check failed: {e}")
 
                     # Sample predictions for display (first 20 samples)
                     num_display = min(20, len(y_true))

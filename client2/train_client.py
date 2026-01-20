@@ -20,13 +20,17 @@ def load_preprocessed(pt_path):
     return X_train, y_train
 
 
-def build_dataloader_from_tensors(X, y, batch_size=32, shuffle=True):
+def build_dataloader_from_tensors(X, y, batch_size=32, shuffle=False):
+    """
+    Build DataLoader from tensors.
+    For time-series data, shuffle=False preserves temporal order.
+    """
     ds = TensorDataset(X, y)
     return DataLoader(ds, batch_size=batch_size, shuffle=shuffle)
 
 
 class Client:
-    def __init__(self, device, train_loader, model, lr=1e-3, server_ip="127.0.0.1", port=8765, epochs=1):
+    def __init__(self, device, train_loader, model, lr=1e-2, server_ip="127.0.0.1", port=8765, epochs=1):
         self.model = model.to(device)
         self.train_loader = train_loader
         self.device = device
@@ -67,7 +71,7 @@ class Client:
         self.model.train()
 
         criterion = nn.MSELoss()
-        optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)
+        optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr, weight_decay=1e-4)
 
         for epoch in range(epochs):
             print(f"Training epoch {epoch + 1}/{epochs}")
@@ -92,6 +96,8 @@ class Client:
                     return False
 
                 loss.backward()
+                # Gradient clipping for stability
+                torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
                 optimizer.step()
                 total_loss += loss.item()
 
@@ -171,7 +177,8 @@ def main():
     print(f"X_train shape: {X_train.shape}, y_train shape: {y_train.shape}")
 
     device = torch.device(args.device)
-    loader = build_dataloader_from_tensors(X_train, y_train, batch_size=args.batch_size, shuffle=True)
+    # shuffle=False for time-series data to preserve temporal order
+    loader = build_dataloader_from_tensors(X_train, y_train, batch_size=args.batch_size, shuffle=False)
 
     model = Model(X_train.shape[2])
 

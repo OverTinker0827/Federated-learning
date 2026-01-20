@@ -128,17 +128,25 @@ class ClientAPI:
             self.is_running = True
             self.log(f'Client training process started (PID: {self.training_process.pid})')
             
-            # Read output in separate thread
-            def read_output():
+            # Read stdout/stderr in separate threads
+            def read_stdout():
                 try:
                     for line in self.training_process.stdout:
                         if line.strip():
                             self.log(line.strip())
-                except:
-                    pass
-            
-            output_thread = threading.Thread(target=read_output, daemon=True)
-            output_thread.start()
+                except Exception as e:
+                    self.log(f'Stdout reader error: {e}', 'WARNING')
+
+            def read_stderr():
+                try:
+                    for line in self.training_process.stderr:
+                        if line.strip():
+                            self.log(line.strip(), level='ERROR')
+                except Exception as e:
+                    self.log(f'Stderr reader error: {e}', 'WARNING')
+
+            threading.Thread(target=read_stdout, daemon=True).start()
+            threading.Thread(target=read_stderr, daemon=True).start()
             # Mark as training and monitor process in background
             self.is_training = True
 

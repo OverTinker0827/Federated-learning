@@ -23,7 +23,7 @@ from typing import Dict, List, Tuple
 CLIENT_DIRS = {
     1: "client1",
     2: "client2",
-    3: "client3",
+
 }
 
 SERVER_DIR = "server"

@@ -1,119 +1,119 @@
 {
-  "mse": 93.48435974121094,
-  "mae": 6.458386421203613,
-  "rmse": 9.668731030554678,
-  "r2": -0.0019588832000279055,
-  "num_samples": 300,
+  "mse": 23.39630889892578,
+  "mae": 3.486908197402954,
+  "rmse": 4.836973113314336,
+  "r2": 0.1964001757950714,
+  "num_samples": 200,
   "feature_dim": 13,
   "seq_len": 7,
   "sample_predictions": [
     {
       "actual": 15.0,
-      "predicted": 19.29,
-      "error": 4.29
+      "predicted": 17.08,
+      "error": 2.08
     },
     {
       "actual": 10.0,
-      "predicted": 19.28,
-      "error": 9.28
+      "predicted": 18.43,
+      "error": 8.43
     },
     {
       "actual": 13.0,
-      "predicted": 19.29,
-      "error": 6.29
+      "predicted": 21.38,
+      "error": 8.38
     },
     {
       "actual": 19.0,
-      "predicted": 19.28,
-      "error": 0.28
+      "predicted": 22.49,
+      "error": 3.49
     },
     {
       "actual": 15.0,
-      "predicted": 19.29,
-      "error": 4.29
+      "predicted": 14.74,
+      "error": 0.26
     },
     {
       "actual": 14.0,
-      "predicted": 19.28,
-      "error": 5.28
+      "predicted": 13.4,
+      "error": 0.6
     },
     {
       "actual": 20.0,
-      "predicted": 19.29,
-      "error": 0.71
+      "predicted": 12.53,
+      "error": 7.47
     },
     {
       "actual": 15.0,
-      "predicted": 19.29,
-      "error": 4.29
+      "predicted": 17.21,
+      "error": 2.21
     },
     {
       "actual": 13.0,
-      "predicted": 19.28,
-      "error": 6.28
+      "predicted": 15.8,
+      "error": 2.8
     },
     {
       "actual": 18.0,
-      "predicted": 19.29,
-      "error": 1.29
+      "predicted": 16.44,
+      "error": 1.56
     },
     {
       "actual": 17.0,
-      "predicted": 19.29,
-      "error": 2.29
-    },
-    {
-      "actual": 21.0,
-      "predicted": 19.29,
-      "error": 1.71
-    },
-    {
-      "actual": 18.0,
-      "predicted": 19.29,
-      "error": 1.29
-    },
-    {
-      "actual": 17.0,
-      "predicted": 19.29,
-      "error": 2.29
-    },
-    {
-      "actual": 15.0,
-      "predicted": 19.29,
-      "error": 4.29
-    },
-    {
-      "actual": 14.0,
-      "predicted": 19.29,
-      "error": 5.29
-    },
-    {
-      "actual": 18.0,
-      "predicted": 19.28,
+      "predicted": 15.72,
       "error": 1.28
     },
     {
+      "actual": 21.0,
+      "predicted": 18.95,
+      "error": 2.05
+    },
+    {
+      "actual": 18.0,
+      "predicted": 18.39,
+      "error": 0.39
+    },
+    {
+      "actual": 17.0,
+      "predicted": 15.42,
+      "error": 1.58
+    },
+    {
+      "actual": 15.0,
+      "predicted": 15.48,
+      "error": 0.48
+    },
+    {
+      "actual": 14.0,
+      "predicted": 18.85,
+      "error": 4.85
+    },
+    {
+      "actual": 18.0,
+      "predicted": 14.15,
+      "error": 3.85
+    },
+    {
       "actual": 29.0,
-      "predicted": 19.28,
-      "error": 9.72
+      "predicted": 24.33,
+      "error": 4.67
     },
     {
       "actual": 19.0,
-      "predicted": 19.29,
-      "error": 0.29
+      "predicted": 17.11,
+      "error": 1.89
     },
     {
       "actual": 16.0,
-      "predicted": 19.29,
-      "error": 3.29
+      "predicted": 12.58,
+      "error": 3.42
     }
   ],
   "prediction_stats": {
     "y_true_min": 7.0,
-    "y_true_max": 73.0,
-    "y_true_mean": 19.719999313354492,
-    "y_pred_min": 19.250459671020508,
-    "y_pred_max": 19.286781311035156,
-    "y_pred_mean": 19.28419303894043
+    "y_true_max": 38.0,
+    "y_true_mean": 16.774999618530273,
+    "y_pred_min": 8.814212799072266,
+    "y_pred_max": 28.434608459472656,
+    "y_pred_mean": 16.42725372314453
   }
 }
