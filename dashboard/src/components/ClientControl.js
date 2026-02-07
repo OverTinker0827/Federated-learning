@@ -52,8 +52,8 @@ function ClientControl({ numClients, serverRunning, serverConfig }) {
     try {
       setLoading(prev => ({ ...prev, [clientId]: true }));
       const config = {
-        server_ip: '127.0.0.1',
-        server_port: 8765,
+        server_ip: serverConfig?.server_ip || process.env.REACT_APP_SERVER_HOST || '20.212.89.239',
+        server_port: serverConfig?.server_port || parseInt(process.env.REACT_APP_SERVER_PORT) || 5000,
         epochs: serverConfig?.epochs || 1
       };
       await ClientAPI.startClient(clientId, config);

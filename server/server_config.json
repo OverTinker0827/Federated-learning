@@ -1,7 +1,7 @@
 {
-  "host": "127.0.0.1",
+  "host": "20.212.89.239",
   "port": 5000,
   "num_clients": 2,
-  "rounds": 50,
-  "epochs": 60
+  "rounds": 2,
+  "epochs": 2
 }

@@ -1,5 +1,6 @@
 {
-  "client1": { "ip": "localhost", "port": "6001" },
-  "client2": { "ip": "localhost", "port": "6002" },
-  "client3": { "ip": "localhost", "port": "6003" }
+  "_comment": "Centralized client configuration - individual client IPs and ports",
+  "client1": { "ip": "40.119.214.95", "port": "6001" },
+  "client2": { "ip": "40.119.214.95", "port": "6002" },
+  "client3": { "ip": "40.119.214.95", "port": "6003" }
 }

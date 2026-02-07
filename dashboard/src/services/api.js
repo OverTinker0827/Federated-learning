@@ -3,7 +3,7 @@ import clientConfig from '../client_config.json';
 
 // Server API service
 export const ServerAPI = {
-  baseURL: process.env.REACT_APP_SERVER_URL || 'http://localhost:5000',
+  baseURL: process.env.REACT_APP_SERVER_URL || 'http:// 20.212.89.239:5000',
 
   async getConfig() {
     try {
@@ -114,17 +114,18 @@ export const ClientAPI = {
 
   getBaseURL: (clientId) => {
     const clientCfg = clientConfig ? clientConfig[`client${clientId}`] : null;
-    if (clientCfg && clientCfg.ip) return clientCfg.ip;
-    return process.env.REACT_APP_CLIENT_URL_BASE || 'http://127.0.0.1';
+    if (clientCfg && clientCfg.ip) {
+      return clientCfg.ip;
+    }
+    throw new Error(`Client ${clientId} configuration not found in client_config.json`);
   },
 
   getPort: (clientId) => {
     const clientCfg = clientConfig ? clientConfig[`client${clientId}`] : null;
     if (clientCfg && clientCfg.port) {
-      // port might be a string in config; ensure we return as-is for URL
       return clientCfg.port;
     }
-    return 6000 + Number(clientId); // Clients on ports 6001, 6002, etc.
+    throw new Error(`Client ${clientId} port configuration not found in client_config.json`);
   },
 
   async getClientURL(clientId) {

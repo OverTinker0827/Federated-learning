@@ -26,7 +26,7 @@ def build_dataloader_from_tensors(X, y, batch_size=32, shuffle=True):
 
 
 class Client:
-    def __init__(self, device, train_loader, model, lr=1e-2, server_ip="127.0.0.1", port=8765, epochs=1):
+    def __init__(self, device, train_loader, model, lr=1e-3, server_ip="127.0.0.1", port=8765, epochs=1):
         self.model = model.to(device)
         self.train_loader = train_loader
         self.device = device
@@ -67,7 +67,7 @@ class Client:
         self.model.train()
 
         criterion = nn.MSELoss()
-        optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr, weight_decay=1e-4)
+        optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)
 
         for epoch in range(epochs):
             print(f"Training epoch {epoch + 1}/{epochs}")
@@ -92,8 +92,6 @@ class Client:
                     return False
 
                 loss.backward()
-                # Gradient clipping for stability
-                torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
                 optimizer.step()
                 total_loss += loss.item()
 

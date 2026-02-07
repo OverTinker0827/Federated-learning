@@ -31,16 +31,33 @@ The dashboard communicates with Python API endpoints on the server and client ma
 
 ## Configuration
 
-### Environment Variables
+### Server Configuration
 
-Create a `.env` file in the dashboard directory:
+Configure server settings in the `.env` file:
 
 ```env
-REACT_APP_SERVER_URL=http://127.0.0.1:5000
-REACT_APP_CLIENT_URL_BASE=http://127.0.0.1
+# Server Configuration Only
+# Client configuration is handled by src/client_config.json
+# 
+REACT_APP_SERVER_URL=http://192.168.0.10:5000
+REACT_APP_SERVER_HOST=192.168.0.10
+REACT_APP_SERVER_PORT=5000
 ```
 
-**Note:** The client port will be calculated as `6000 + clientId` (so Client 1 runs on 6001, Client 2 on 6002, etc.)
+### Client Configuration
+
+Configure all client settings in `src/client_config.json`:
+
+```json
+{
+  "_comment": "Centralized client configuration - individual client IPs and ports",
+  "client1": { "ip": "192.168.0.11", "port": "6001" },
+  "client2": { "ip": "192.168.0.11", "port": "6002" },
+  "client3": { "ip": "192.168.0.11", "port": "6003" }
+}
+```
+
+**Important:** All clients must be defined in the client_config.json file. The dashboard will throw an error if a client configuration is not found.
 
 ## Running the Dashboard
 
