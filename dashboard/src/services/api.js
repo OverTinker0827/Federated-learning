@@ -3,7 +3,7 @@ import clientConfig from '../client_config.json';
 
 // Server API service
 export const ServerAPI = {
-  baseURL: process.env.REACT_APP_SERVER_URL || 'http:// 20.212.89.239:5000',
+  baseURL: process.env.REACT_APP_SERVER_URL || 'http://172.16.0.5:5000',
 
   async getConfig() {
     try {

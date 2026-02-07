@@ -52,7 +52,7 @@ function ClientControl({ numClients, serverRunning, serverConfig }) {
     try {
       setLoading(prev => ({ ...prev, [clientId]: true }));
       const config = {
-        server_ip: serverConfig?.server_ip || process.env.REACT_APP_SERVER_HOST || '20.212.89.239',
+        server_ip: serverConfig?.server_ip || process.env.REACT_APP_SERVER_HOST || '172.16.0.5',
         server_port: serverConfig?.server_port || parseInt(process.env.REACT_APP_SERVER_PORT) || 5000,
         epochs: serverConfig?.epochs || 1
       };
