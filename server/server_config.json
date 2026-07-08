@@ -1,5 +1,5 @@
 {
-  "host": "172.16.0.5",
+  "host": "10.0.0.4",
   "port": 5000,
   "num_clients": 2,
   "rounds": 2,

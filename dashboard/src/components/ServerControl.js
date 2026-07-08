@@ -4,7 +4,7 @@ import './ServerControl.css';
 
 function ServerControl({ onConfigChange, onServerStatusChange, numClients }) {
   const [config, setConfig] = useState({
-    host: process.env.REACT_APP_SERVER_HOST || '172.16.0.5',
+    host: process.env.REACT_APP_SERVER_HOST || '10.0.0.4',
     port: parseInt(process.env.REACT_APP_SERVER_PORT) || 5000,
     num_clients: 2,
     rounds: 1,

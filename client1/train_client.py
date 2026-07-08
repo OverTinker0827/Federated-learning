@@ -26,7 +26,7 @@ def build_dataloader_from_tensors(X, y, batch_size=32, shuffle=True):
 
 
 class Client:
-    def __init__(self, device, train_loader, model, lr=1e-3, server_ip="127.0.0.1", port=8765, epochs=1):
+    def __init__(self, device, train_loader, model, lr=1e-3, server_ip="10.0.0.4", port=8765, epochs=1):
         self.model = model.to(device)
         self.train_loader = train_loader
         self.device = device

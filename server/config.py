@@ -5,7 +5,7 @@ CONFIG_FILE = 'server_config.json'
 
 class Config:
     """Server Configuration"""
-    HOST = "172.16.0.5"
+    HOST = "10.0.0.4"
     PORT = 5000
     NUM_CLIENTS = 3
     ROUNDS = 1
