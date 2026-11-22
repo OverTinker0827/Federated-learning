@@ -1,14 +1,14 @@
 import json
 import os
 
-CONFIG_FILE = 'client_config.json'
+CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'client_config.json')
 Client_IP="127.0.0.1"
 class Config:
     """Client Configuration"""
     SERVER_IP = "127.0.0.1"
     SERVER_PORT = 8765
     CLIENT_ID = None
-    CSV_PATH = "blood_bank_data_3.csv"
+    CSV_PATH = "ecommerce_data_3.csv"
     
     @classmethod
     def load_from_file(cls):

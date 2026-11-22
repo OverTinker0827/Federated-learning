@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="description" content="Grama Connect - village marketplace with on-device AI">
+  <title>Grama Connect</title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/app/icon-192.png">
+  <link rel="apple-touch-icon" href="/app/icon-192.png">
+  <link rel="stylesheet" href="/app/styles.css">
+</head>
+<body>
+
+<!-- ============================== CONNECT ============================== -->
+<section id="view-connect" class="view">
+  <div class="connect-wrap">
+    <img src="/app/icon-192.png" alt="" class="logo">
+    <h1>Grama Connect</h1>
+    <p class="muted">Straight from village farms and artisans</p>
+
+    <form id="connect-form" class="card">
+      <label for="host">Laptop IP address</label>
+      <input id="host" inputmode="decimal" autocomplete="off" placeholder="192.168.43.12" required>
+      <label for="port">Bridge port</label>
+      <input id="port" inputmode="numeric" value="7000" required>
+      <label for="devname">Device name</label>
+      <input id="devname" placeholder="Android phone">
+      <button type="submit" class="btn btn-primary" id="connect-btn">Connect</button>
+      <p id="connect-error" class="error" hidden></p>
+    </form>
+    <p class="hint">Connect the laptop to this phone's hotspot, then enter the laptop's IP (shown in the
+      <code>phone_bridge.py</code> console).</p>
+    <button id="install-btn" class="btn btn-ghost" hidden>Install app</button>
+  </div>
+</section>
+
+<!-- ============================== APP SHELL ============================== -->
+<section id="view-app" class="view" hidden>
+
+  <!-- ---------- SHOP HOME ---------- -->
+  <div class="page" id="page-shop">
+    <header class="shop-top">
+      <div class="shop-top-row">
+        <div class="brand-mark"><img src="/app/icon-192.png" alt=""><span>Grama Connect</span></div>
+        <a href="#/ai" class="train-chip" id="train-chip" hidden><span class="dot"></span><span id="train-chip-text">AI</span></a>
+      </div>
+      <div class="search">
+        <span aria-hidden="true">🔍</span>
+        <input id="search" type="search" placeholder="Search grains, honey, pottery…" autocomplete="off">
+      </div>
+    </header>
+    <main class="shop-main">
+      <div class="promo" id="promo">
+        <div>
+          <div class="promo-title">Harvest Festival Sale</div>
+          <div class="promo-sub">Fresh grains, honey &amp; handicrafts - up to 50% off</div>
+        </div>
+        <div class="promo-emoji">🌾</div>
+      </div>
+      <div class="chips" id="cat-chips"></div>
+      <div class="list-head">
+        <span id="result-count" class="muted small"></span>
+        <select id="sort">
+          <option value="popular">Popular</option>
+          <option value="price-asc">Price: low to high</option>
+          <option value="price-desc">Price: high to low</option>
+          <option value="deals">Biggest discount</option>
+          <option value="rating">Top rated</option>
+        </select>
+      </div>
+      <div class="grid" id="product-grid"></div>
+      <button class="btn btn-ghost" id="load-more">Load more</button>
+    </main>
+  </div>
+
+  <!-- ---------- ITEM DETAIL ---------- -->
+  <div class="page" id="page-item" hidden>
+    <header class="subbar">
+      <a href="#/shop" class="back" id="item-back">‹</a>
+      <span class="subbar-title">Item</span>
+      <a href="#/cart" class="icon-btn" aria-label="Cart">🛒<span class="badge" data-cart-badge hidden></span></a>
+    </header>
+    <main id="item-body"></main>
+  </div>
+
+  <!-- ---------- CART ---------- -->
+  <div class="page" id="page-cart" hidden>
+    <header class="subbar">
+      <span class="subbar-title">Your basket</span>
+    </header>
+    <main id="cart-body"></main>
+  </div>
+
+  <!-- ---------- ACCOUNT ---------- -->
+  <div class="page" id="page-account" hidden>
+    <header class="subbar">
+      <span class="subbar-title">Account</span>
+    </header>
+    <main id="account-body"></main>
+  </div>
+
+  <!-- ---------- ON-DEVICE AI (federated learning) ---------- -->
+  <div class="page" id="page-ai" hidden>
+    <header class="subbar">
+      <a href="#/account" class="back">‹</a>
+      <div class="subbar-title">
+        On-device AI
+        <div class="sub" id="conn-label">—</div>
+      </div>
+      <span class="pill" id="conn-pill">offline</span>
+    </header>
+
+    <main>
+      <p class="intro">Your phone helps train Grama Connect's demand-forecasting model together with other village sellers.
+        Sales data stays on this device - only model updates are shared.</p>
+
+      <!-- Federation status -->
+      <div class="card hero">
+        <div class="hero-row">
+          <div>
+            <div class="eyebrow">Federated round</div>
+            <div class="big"><span id="round-num">0</span><span class="muted">/<span id="round-total">–</span></span></div>
+          </div>
+          <button class="btn btn-primary" id="join-btn">Join federation</button>
+        </div>
+        <div class="status-line" id="status-text">Not joined</div>
+        <ol class="stepper" id="stepper">
+          <li data-step="wait">Waiting</li>
+          <li data-step="download">Download</li>
+          <li data-step="train">Train</li>
+          <li data-step="upload">Upload</li>
+          <li data-step="aggregate">Aggregate</li>
+        </ol>
+        <div class="kv-row">
+          <div><span class="k">FL client ID</span><span class="v" id="fl-id">–</span></div>
+          <div><span class="k">Server</span><span class="v" id="fl-server">–</span></div>
+          <div><span class="k">Last sync</span><span class="v" id="last-sync">–</span></div>
+        </div>
+      </div>
+
+      <!-- Local training -->
+      <div class="card">
+        <div class="card-title">Local training <span class="tag" id="mode-tag">on-device</span></div>
+        <div class="bar-label"><span>Epoch <b id="epoch-num">0</b>/<span id="epoch-total">–</span></span><span id="epoch-pct">0%</span></div>
+        <div class="bar"><div class="fill" id="epoch-bar"></div></div>
+        <div class="bar-label"><span>Batch <b id="batch-num">0</b>/<span id="batch-total">–</span></span><span id="batch-pct">0%</span></div>
+        <div class="bar thin"><div class="fill alt" id="batch-bar"></div></div>
+        <canvas id="loss-chart" height="160" aria-label="Training loss chart"></canvas>
+        <div class="stats">
+          <div><span class="k">Loss (MSE)</span><span class="v" id="st-loss">–</span></div>
+          <div><span class="k">MAE</span><span class="v" id="st-mae">–</span></div>
+          <div><span class="k">Samples/s</span><span class="v" id="st-sps">–</span></div>
+          <div><span class="k">Round time</span><span class="v" id="st-time">–</span></div>
+          <div><span class="k">Downloaded</span><span class="v" id="st-down">–</span></div>
+          <div><span class="k">Uploaded</span><span class="v" id="st-up">–</span></div>
+        </div>
+      </div>
+
+      <!-- Global model -->
+      <div class="card">
+        <div class="card-title">Global model <span class="muted small">server test set</span></div>
+        <canvas id="global-chart" height="120" aria-label="Global model error per round"></canvas>
+        <div class="stats">
+          <div><span class="k">Test MAE</span><span class="v" id="g-mae">–</span></div>
+          <div><span class="k">R²</span><span class="v" id="g-r2">–</span></div>
+          <div><span class="k">Clients/round</span><span class="v" id="g-clients">–</span></div>
+        </div>
+        <div id="done-panel" hidden>
+          <div class="done-banner">Federated training complete</div>
+          <div class="card-title small-title">On-device predictions with the final global model</div>
+          <table class="tbl" id="pred-table">
+            <thead><tr><th>Listing</th><th>Price</th><th>Actual</th><th>Predicted</th></tr></thead>
+            <tbody></tbody>
+          </table>
+          <a href="#/shop" class="btn btn-ghost">See AI forecasts in the shop</a>
+        </div>
+      </div>
+
+      <!-- Local data -->
+      <div class="card">
+        <div class="card-title">On-device data</div>
+        <div class="store-row">
+          <div class="store-name" id="store-name">–</div>
+          <div class="muted small"><span id="data-count">0</span> listings · <span id="data-size">–</span></div>
+        </div>
+        <div class="cat-bars" id="cat-bars"></div>
+        <table class="tbl" id="data-table">
+          <thead><tr><th>Listing</th><th>Cat.</th><th>Price</th><th>Views</th><th>Sold 7d</th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <div class="privacy">🔒 Raw sales data never leaves this phone. Only model weights (<span id="param-count">–</span> numbers) are shared.</div>
+      </div>
+
+      <!-- Device -->
+      <div class="card">
+        <div class="card-title">Device</div>
+        <div class="stats">
+          <div><span class="k">Model</span><span class="v" id="dev-model">–</span></div>
+          <div><span class="k">CPU cores</span><span class="v" id="dev-cores">–</span></div>
+          <div><span class="k">Memory</span><span class="v" id="dev-mem">–</span></div>
+          <div><span class="k">Battery</span><span class="v" id="dev-batt">–</span></div>
+          <div><span class="k">Network</span><span class="v" id="dev-net">–</span></div>
+          <div><span class="k">Screen lock</span><span class="v" id="dev-wake">–</span></div>
+        </div>
+      </div>
+
+      <!-- Settings -->
+      <div class="card">
+        <div class="card-title">Settings</div>
+        <label class="row-setting">
+          <span>Demo pacing<br><span class="muted small">delay per mini-batch so training is watchable</span></span>
+          <select id="pace">
+            <option value="0">Off (full speed)</option>
+            <option value="15">Light</option>
+            <option value="40" selected>Demo</option>
+            <option value="90">Slow</option>
+          </select>
+        </label>
+        <label class="row-setting">
+          <span>Simulated training<br><span class="muted small">fallback: animate training and return weights unchanged</span></span>
+          <input type="checkbox" id="sim-toggle">
+        </label>
+        <button class="btn btn-ghost" id="disconnect-btn">Change laptop IP</button>
+      </div>
+
+      <!-- Log -->
+      <div class="card">
+        <div class="card-title">Activity log</div>
+        <pre id="log" class="log"></pre>
+      </div>
+    </main>
+  </div>
+
+  <!-- ---------- BOTTOM NAV ---------- -->
+  <nav class="tabbar" id="tabbar">
+    <a href="#/shop" data-tab="shop"><span class="ti">🏠</span><span>Shop</span></a>
+    <a href="#/cart" data-tab="cart"><span class="ti">🧺<span class="badge" data-cart-badge hidden></span></span><span>Basket</span></a>
+    <a href="#/account" data-tab="account"><span class="ti">👤</span><span>Account</span></a>
+  </nav>
+</section>
+
+<div class="toast" id="toast" hidden></div>
+
+<script src="/app/trainer.js"></script>
+<script src="/app/app.js"></script>
+<script src="/app/shop.js"></script>
+</body>
+</html>

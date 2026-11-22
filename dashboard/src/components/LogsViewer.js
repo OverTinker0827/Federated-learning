@@ -114,7 +114,7 @@ function LogsViewer({ numClients }) {
             >
               {Array.from({ length: numClients }, (_, i) => (
                 <option key={i + 1} value={i + 1}>
-                  Client {i + 1}
+                  {ClientAPI.getClientConfig(i + 1)?.label || `Client ${i + 1}`}
                 </option>
               ))}
             </select>

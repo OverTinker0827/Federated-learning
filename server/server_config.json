@@ -1,7 +1,8 @@
 {
-  "host": "10.0.0.4",
+  "host": "0.0.0.0",
   "port": 5000,
-  "num_clients": 2,
-  "rounds": 2,
-  "epochs": 2
+  "num_clients": 3,
+  "rounds": 5,
+  "epochs": 2,
+  "resume": false
 }

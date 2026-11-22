@@ -100,7 +100,7 @@ class ClientAPI:
                 return jsonify({'error': 'Client is already running'}), 400
             
             data = request.get_json() or {}
-            server_ip = data.get('server_ip', '10.0.0.4')
+            server_ip = data.get('server_ip', '127.0.0.1')
             server_port = data.get('server_port', 8765)
             epochs = data.get('epochs', 1)
             

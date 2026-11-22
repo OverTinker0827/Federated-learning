@@ -271,3 +271,17 @@
     width: 100%;
   }
 }
+
+/* Phone client card */
+.client-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 400;
+  opacity: 0.7;
+  margin-top: 2px;
+}
+
+.phone-card {
+  border: 2px solid #38bdf8;
+  box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.12);
+}
