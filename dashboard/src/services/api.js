@@ -3,7 +3,7 @@ import clientConfig from '../client_config.json';
 
 // Server API service
 export const ServerAPI = {
-  baseURL: process.env.REACT_APP_SERVER_URL || 'http://10.0.0.4:5000',
+  baseURL: process.env.REACT_APP_SERVER_URL || 'http://127.0.0.1:5000',
 
   async getConfig() {
     try {
@@ -95,9 +95,9 @@ export const ServerAPI = {
     }
   },
 
-  async predict(features) {
+  async predict(listing) {
     try {
-      const response = await axios.post(`${this.baseURL}/predict`, { features });
+      const response = await axios.post(`${this.baseURL}/predict`, { listing });
       return response.data;
     } catch (error) {
       console.error('Error making prediction:', error);

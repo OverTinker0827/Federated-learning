@@ -2,11 +2,32 @@ import React, { useState, useEffect } from 'react';
 import { ClientAPI } from '../services/api';
 import './ClientControl.css';
 
+const PHASE_TEXT = {
+  connecting: 'Connecting to server',
+  waiting_for_round: 'Waiting for round',
+  weights_ready: 'Waiting for phone to download',
+  phone_training: 'Training on phone',
+  uploading: 'Uploading update',
+  aggregating: 'Server aggregating',
+  complete: 'Complete',
+  error: 'Error',
+};
+
+const isPhone = (id) => ClientAPI.getClientConfig(id)?.type === 'phone';
+
 function ClientControl({ numClients, serverRunning, serverConfig }) {
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState({});
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState('');
+
+  // Poll status so the phone's live progress shows up without clicking Refresh
+  useEffect(() => {
+    const t = setInterval(() => {
+      for (let id = 1; id <= numClients; id++) checkClientStatus(id);
+    }, 2000);
+    return () => clearInterval(t);
+  }, [numClients]);
 
   // Initialize clients
   useEffect(() => {
@@ -30,7 +51,10 @@ function ClientControl({ numClients, serverRunning, serverConfig }) {
       const status = await ClientAPI.getStatus(clientId);
       setClients(prev => prev.map(c =>
         c.id === clientId
-          ? { ...c, running: status.running, training: status.training, progress: status.progress || 0, error: null }
+          ? {
+              ...c, running: status.running, training: status.training, progress: status.progress || 0, error: null,
+              phase: status.phase, round: status.round, phoneOnline: status.phone_online, device: status.device
+            }
           : c
       ));
     } catch (error) {
@@ -52,8 +76,10 @@ function ClientControl({ numClients, serverRunning, serverConfig }) {
     try {
       setLoading(prev => ({ ...prev, [clientId]: true }));
       const config = {
-        server_ip: serverConfig?.server_ip || process.env.REACT_APP_SERVER_HOST || '10.0.0.4',
-        server_port: serverConfig?.server_port || parseInt(process.env.REACT_APP_SERVER_PORT) || 5000,
+        // address/port of the raw TCP FL server, as seen from the client processes on this laptop
+        server_ip: process.env.REACT_APP_SERVER_HOST || '127.0.0.1',
+        server_port: parseInt(process.env.REACT_APP_FL_PORT, 10) || serverConfig?.fl_port || 8765,
+        fl_port: parseInt(process.env.REACT_APP_FL_PORT, 10) || serverConfig?.fl_port || 8765,
         epochs: serverConfig?.epochs || 1
       };
       await ClientAPI.startClient(clientId, config);
@@ -94,9 +120,12 @@ function ClientControl({ numClients, serverRunning, serverConfig }) {
 
       <div className="clients-grid">
         {clients.map(client => (
-          <div key={client.id} className="client-card">
+          <div key={client.id} className={`client-card ${isPhone(client.id) ? 'phone-card' : ''}`}>
             <div className="card-header">
-              <h3>Client {client.id}</h3>
+              <h3>
+                {isPhone(client.id) ? '📱 ' : '💻 '}Client {client.id}
+                <span className="client-label">{ClientAPI.getClientConfig(client.id)?.label || ''}</span>
+              </h3>
               <div className={`status-dot ${client.running ? 'running' : 'stopped'}`} title={client.running ? 'Running' : 'Stopped'} />
             </div>
 
@@ -107,6 +136,29 @@ function ClientControl({ numClients, serverRunning, serverConfig }) {
                   {client.running ? '● Running' : '○ Stopped'}
                 </span>
               </div>
+
+              {isPhone(client.id) && (
+                <>
+                  <div className="info-row">
+                    <span className="label">Phone app:</span>
+                    <span className={`status-text ${client.phoneOnline ? 'running' : 'stopped'}`}>
+                      {client.phoneOnline ? `● Online${client.device?.name ? ` (${client.device.name})` : ''}` : '○ Not connected'}
+                    </span>
+                  </div>
+                  {client.running && (
+                    <div className="info-row">
+                      <span className="label">Phase:</span>
+                      <span>{PHASE_TEXT[client.phase] || client.phase}{client.round ? ` · round ${client.round}` : ''}</span>
+                    </div>
+                  )}
+                  {client.device?.battery != null && (
+                    <div className="info-row">
+                      <span className="label">Battery:</span>
+                      <span>{client.device.battery}%{client.device.charging ? ' ⚡' : ''} · {client.device.cores || '?'} cores</span>
+                    </div>
+                  )}
+                </>
+              )}
 
               {client.training && (
                 <div className="info-row">

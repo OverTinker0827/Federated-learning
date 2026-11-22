@@ -1,14 +1,14 @@
 import json
 import os
 
-CONFIG_FILE = 'client_config.json'
-Client_IP="10.0.0.5"
+CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'client_config.json')
+Client_IP = "127.0.0.1"  # laptop clients only need to be reachable by the local dashboard
 class Config:
     """Client Configuration"""
-    SERVER_IP = "10.0.0.4"
+    SERVER_IP = "127.0.0.1"
     SERVER_PORT = 8765
     CLIENT_ID = None
-    CSV_PATH = "blood_bank_data_1.csv"
+    CSV_PATH = "ecommerce_data_1.csv"
     
     @classmethod
     def load_from_file(cls):

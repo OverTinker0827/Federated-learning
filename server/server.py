@@ -1,6 +1,4 @@
 import torch
-from torch.utils.data import DataLoader, Subset
-from torchvision import datasets, transforms
 import numpy as np
 from model import Model
 import threading
@@ -8,10 +6,16 @@ import os
 import asyncio
 import struct
 import io
+import json
 from config import Config
 
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 PORT=8765
+HERE = os.path.dirname(os.path.abspath(__file__))
+WEIGHTS_PATH = os.path.join(HERE, "global_weights.pth")
+TEST_DATA_PATH = os.path.join(HERE, "test_data.pt")
+TEST_RESULTS_PATH = os.path.join(HERE, "test_results.json")
+ROUND_METRICS_PATH = os.path.join(HERE, "round_metrics.json")
 
 clients = {}          
 client_count = 0
@@ -185,19 +189,76 @@ async def collect_updates(timeout=600):
     return updates
 
 
+def evaluate(model):
+    """Evaluate the global model on the held-out marketplace test set (in units)."""
+    if not os.path.exists(TEST_DATA_PATH):
+        return None
+    data = torch.load(TEST_DATA_PATH, map_location=DEVICE, weights_only=False)
+    X_test, y_test = data['X_test'], data['y_test']
+    meta = data.get('metadata', {})
+    y_mean, y_std = float(meta.get('y_mean', 0.0)), float(meta.get('y_std', 1.0))
+    if len(X_test) == 0:
+        return None
+    model.eval()
+    with torch.no_grad():
+        preds_scaled = model(X_test.to(DEVICE)).cpu().numpy()
+    y_true = y_test.cpu().numpy() * y_std + y_mean
+    y_pred = np.clip(preds_scaled * y_std + y_mean, 0, None)
+
+    mse = float(np.mean((y_true - y_pred) ** 2))
+    mae = float(np.mean(np.abs(y_true - y_pred)))
+    ss_res = float(np.sum((y_true - y_pred) ** 2))
+    ss_tot = float(np.sum((y_true - np.mean(y_true)) ** 2))
+    return {
+        'mse': mse,
+        'mae': mae,
+        'rmse': float(np.sqrt(mse)),
+        'r2': 1.0 - ss_res / ss_tot if ss_tot != 0 else 0.0,
+        'num_samples': int(len(y_true)),
+        'feature_dim': int(X_test.shape[1]),
+        'target': 'units sold in next 7 days',
+        '_y_true': y_true,
+        '_y_pred': y_pred,
+    }
+
+
+def write_round_metrics(history, status):
+    try:
+        with open(ROUND_METRICS_PATH, 'w') as fh:
+            json.dump({'status': status, 'rounds_total': Config.ROUNDS, 'history': history}, fh, indent=2)
+    except Exception as e:
+        print(f"Could not write round metrics: {e}")
+
+
 async def federated_training():
-    global_model = Model(13).to(DEVICE)
-    if os.path.exists("global_weights.pth"):
+    global_model = Model().to(DEVICE)
+    if Config.RESUME and os.path.exists(WEIGHTS_PATH):
         try:
-            state = torch.load("global_weights.pth", map_location=DEVICE)
+            state = torch.load(WEIGHTS_PATH, map_location=DEVICE)
             global_model.load_state_dict(state)
-            print("Loaded existing weights.")
+            print("Loaded existing global weights (resume enabled).")
         except Exception as e:
             print(f"Could not load existing weights (shape mismatch or corrupt file): {e}. Starting fresh.")
+    else:
+        print("Initialised fresh global DemandNet model "
+              f"({sum(p.numel() for p in global_model.parameters())} parameters).")
 
-    print("Waiting for all clients to connect...")
+    # Clear results of a previous demo run so the dashboard doesn't show stale metrics
+    for stale in (TEST_RESULTS_PATH, ROUND_METRICS_PATH):
+        if os.path.exists(stale):
+            os.remove(stale)
+
+    history = []
+    base = evaluate(global_model)
+    if base:
+        history.append({'round': 0, 'mae': base['mae'], 'rmse': base['rmse'], 'r2': base['r2'], 'clients': 0})
+        print(f"Round 0 (untrained) | Test MAE: {base['mae']:.2f} units | R2: {base['r2']:.3f}")
+    write_round_metrics(history, 'waiting_for_clients')
+
+    print(f"Waiting for all {Config.NUM_CLIENTS} clients to connect...")
     await all_clients_connected.wait()
     print(f"All {Config.NUM_CLIENTS} client(s) connected. Starting training.")
+    write_round_metrics(history, 'training')
 
     stopped.clear()
     round_num = 0
@@ -211,12 +272,11 @@ async def federated_training():
         print(f"\n--- Round {round_num}/{Config.ROUNDS} ---")
 
         try:
-            # Broadcast weights
+            print(f"Broadcasting global model to {len(clients)} client(s)")
             await broadcast_weights(global_model.state_dict())
             if stopped.is_set():
                 break
 
-            # Collect updates
             updates = await collect_updates()
             if stopped.is_set():
                 break
@@ -226,116 +286,56 @@ async def federated_training():
                 stopped.set()
                 break
 
-            # Aggregate
+            print(f"Received updates from clients {sorted(updates.keys())}; running FedAvg")
             new_state = federated_average(list(updates.values()))
             global_model.load_state_dict(new_state)
 
-            print(f"Round {round_num} aggregation complete")
+            m = evaluate(global_model)
+            if m:
+                history.append({'round': round_num, 'mae': m['mae'], 'rmse': m['rmse'], 'r2': m['r2'],
+                                'clients': len(updates)})
+                print(f"Round {round_num} aggregation complete | Test MAE: {m['mae']:.2f} units | "
+                      f"RMSE: {m['rmse']:.2f} | R2: {m['r2']:.3f}")
+            else:
+                print(f"Round {round_num} aggregation complete")
+            write_round_metrics(history, 'training')
 
         except Exception as e:
             print(f"Error during training round: {e}")
             stopped.set()
             break
 
-    if round_num == Config.ROUNDS:
-        torch.save(global_model.state_dict(), "global_weights.pth")
+    if round_num == Config.ROUNDS and not stopped.is_set():
+        torch.save(global_model.state_dict(), WEIGHTS_PATH)
         print(f"\nTraining completed successfully after {Config.ROUNDS} rounds!")
-        print("saving values")
+        print(f"Saved global model to {WEIGHTS_PATH}")
 
-    # After training completes (or stops), evaluate on test dataset if available
     try:
-        test_data_path = os.path.join(os.path.dirname(__file__), 'test_data.pt')
-        if os.path.exists(test_data_path):
-            print("Running evaluation on test dataset...")
-            try:
-                import json
-
-                # Load preprocessed test data
-                test_data = torch.load(test_data_path, map_location=DEVICE, weights_only=False)
-                X_test = test_data['X_test']
-                y_test = test_data['y_test']
-                metadata = test_data.get('metadata', {})
-
-                print(f"Test data loaded: {len(X_test)} samples, {X_test.shape[2]} features")
-
-                if len(X_test) == 0:
-                    print('No test samples available; skipping evaluation')
-                else:
-                    device = DEVICE
-                    global_model.to(device)
-                    global_model.eval()
-                    
-                    with torch.no_grad():
-                        X_tensor = X_test.to(device)
-                        y_tensor = y_test.to(device)
-                        preds_tensor = global_model(X_tensor)
-                        preds = preds_tensor.cpu().numpy()
-
-                    y_true = y_test.cpu().numpy()
-                    y_pred = preds
-
-                    # Compute metrics
-                    mse = float(np.mean((y_true - y_pred) ** 2))
-                    mae = float(np.mean(np.abs(y_true - y_pred)))
-                    rmse = float(np.sqrt(mse))
-                    ss_res = float(np.sum((y_true - y_pred) ** 2))
-                    ss_tot = float(np.sum((y_true - np.mean(y_true)) ** 2))
-                    r2 = 1.0 - ss_res / ss_tot if ss_tot != 0 else 0.0
-
-                    # Sanity-check metrics with PyTorch as well
-                    try:
-                        torch_mse = torch.mean((y_tensor - preds_tensor.to(device)) ** 2).item()
-                        torch_mae = torch.mean(torch.abs(y_tensor - preds_tensor.to(device))).item()
-                        print(f"Sanity check (PyTorch): MSE={torch_mse:.4f}, MAE={torch_mae:.4f}, RMSE={np.sqrt(torch_mse):.4f}")
-                    except Exception as e:
-                        print(f"Sanity check failed: {e}")
-
-                    # Sample predictions for display (first 20 samples)
-                    num_display = min(20, len(y_true))
-                    sample_predictions = [
-                        {
-                            "actual": round(float(y_true[i]), 2),
-                            "predicted": round(float(y_pred[i]), 2),
-                            "error": round(float(abs(y_true[i] - y_pred[i])), 2)
-                        }
-                        for i in range(num_display)
-                    ]
-
-                    results = {
-                        'mse': mse,
-                        'mae': mae,
-                        'rmse': rmse,
-                        'r2': r2,
-                        'num_samples': int(len(y_true)),
-                        'feature_dim': int(metadata.get('feature_dim', X_test.shape[2])),
-                        'seq_len': int(metadata.get('seq_len', X_test.shape[1])),
-                        'sample_predictions': sample_predictions,
-                        'prediction_stats': {
-                            'y_true_min': float(np.min(y_true)),
-                            'y_true_max': float(np.max(y_true)),
-                            'y_true_mean': float(np.mean(y_true)),
-                            'y_pred_min': float(np.min(y_pred)),
-                            'y_pred_max': float(np.max(y_pred)),
-                            'y_pred_mean': float(np.mean(y_pred))
-                        }
-                    }
-
-                    # Save results
-                    results_path = os.path.join(os.path.dirname(__file__), 'test_results.json')
-                    with open(results_path, 'w') as fh:
-                        json.dump(results, fh, indent=2)
-
-                    print(f'Evaluation results: MSE={mse:.4f}, MAE={mae:.4f}, RMSE={rmse:.4f}, R²={r2:.4f}')
-                    print('Evaluation results saved to', results_path)
-            except Exception as e:
-                print('Error during evaluation:', e)
-                import traceback
-                traceback.print_exc()
+        m = evaluate(global_model)
+        if m:
+            y_true, y_pred = m.pop('_y_true'), m.pop('_y_pred')
+            n_show = min(20, len(y_true))
+            m['sample_predictions'] = [
+                {'actual': round(float(y_true[i]), 2), 'predicted': round(float(y_pred[i]), 2),
+                 'error': round(float(abs(y_true[i] - y_pred[i])), 2)}
+                for i in range(n_show)
+            ]
+            m['prediction_stats'] = {
+                'y_true_min': float(np.min(y_true)), 'y_true_max': float(np.max(y_true)),
+                'y_true_mean': float(np.mean(y_true)), 'y_pred_min': float(np.min(y_pred)),
+                'y_pred_max': float(np.max(y_pred)), 'y_pred_mean': float(np.mean(y_pred)),
+            }
+            m['round_history'] = history
+            with open(TEST_RESULTS_PATH, 'w') as fh:
+                json.dump(m, fh, indent=2)
+            print(f"Evaluation results: MSE={m['mse']:.4f}, MAE={m['mae']:.4f}, "
+                  f"RMSE={m['rmse']:.4f}, R2={m['r2']:.4f}")
         else:
             print('No test_data.pt found; skipping evaluation')
-    except Exception:
-        pass
+    except Exception as e:
+        print('Error during evaluation:', e)
 
+    write_round_metrics(history, 'complete' if round_num == Config.ROUNDS and not stopped.is_set() else 'stopped')
     training_complete.set()
 
     # Give time for completion signals to be sent

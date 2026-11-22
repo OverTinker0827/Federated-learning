@@ -4,7 +4,7 @@ import './ServerControl.css';
 
 function ServerControl({ onConfigChange, onServerStatusChange, numClients }) {
   const [config, setConfig] = useState({
-    host: process.env.REACT_APP_SERVER_HOST || '10.0.0.4',
+    host: '0.0.0.0',
     port: parseInt(process.env.REACT_APP_SERVER_PORT) || 5000,
     num_clients: 2,
     rounds: 1,
@@ -321,7 +321,7 @@ function ServerControl({ onConfigChange, onServerStatusChange, numClients }) {
 
           {metrics.sample_predictions && metrics.sample_predictions.length > 0 && (
             <div className="sample-predictions">
-              <h3>Sample Predictions (Units Used Tomorrow)</h3>
+              <h3>Sample Predictions (Units Sold in Next 7 Days)</h3>
               <div className="predictions-table-container">
                 <table className="predictions-table">
                   <thead>

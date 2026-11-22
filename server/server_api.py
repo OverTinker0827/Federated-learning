@@ -30,27 +30,9 @@ import signal
 import torch
 import numpy as np
 
-# Feature names in the order used by the model (must match preprocessing.py)
-FEATURE_NAMES = [
-    "DayOfWeek",           # 0-6 (Monday=0, Sunday=6)
-    "Month",               # 1-12
-    "Weekend",             # 0 or 1
-    "Emergency_Room_Cases",# Numeric
-    "Scheduled_Surgeries", # Numeric
-    "Trauma_Alert_Level",  # Numeric (e.g., 0-5)
-    "Blood_Type",          # Encoded: A+=0, A-=1, AB+=2, AB-=3, B+=4, B-=5, O+=6, O-=7
-    "New_Donations",       # Numeric
-    "Units_Used",          # Numeric
-    "Starting_Inventory",  # Numeric
-    "Ending_Inventory",    # Numeric
-    "Days_Supply",         # Numeric
-    "Shortage_Flag",       # 0 or 1
-]
-
-BLOOD_TYPE_ENCODING = {
-    "A+": 0, "A-": 1, "AB+": 2, "AB-": 3,
-    "B+": 4, "B-": 5, "O+": 6, "O-": 7
-}
+# Shared e-commerce feature definitions live at the repo root
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import ecommerce_features as ef
 
 class ServerAPI:
     def __init__(self, app=None):
@@ -87,6 +69,7 @@ class ServerAPI:
         self.app.route('/logs/clear', methods=['POST'])(self.clear_logs)
         self.app.route('/predict', methods=['POST'])(self.predict)
         self.app.route('/feature-info', methods=['GET'])(self.get_feature_info)
+        self.app.route('/round-metrics', methods=['GET'])(self.get_round_metrics)
 
     def get_metrics(self):
         """Return evaluation metrics computed by the training server (if any)"""
@@ -102,89 +85,71 @@ class ServerAPI:
             self.log(f'Error getting metrics: {e}', 'ERROR')
             return jsonify({'error': str(e)}), 500
 
+    def get_round_metrics(self):
+        """Per-round global model test metrics written by server.py"""
+        path = os.path.join(os.path.dirname(__file__), 'round_metrics.json')
+        if not os.path.exists(path):
+            return jsonify({'status': 'idle', 'history': []}), 200
+        import json
+        try:
+            with open(path) as fh:
+                return jsonify(json.load(fh)), 200
+        except Exception:
+            return jsonify({'status': 'unknown', 'history': []}), 200
+
     def get_feature_info(self):
-        """Return feature names and encoding info for the test panel"""
+        """Return listing fields for the test panel"""
         try:
             return jsonify({
-                'features': FEATURE_NAMES,
-                'blood_type_encoding': BLOOD_TYPE_ENCODING,
-                'seq_len': 7,
-                'description': {
-                    'DayOfWeek': 'Day of week (0=Monday, 6=Sunday)',
-                    'Month': 'Month (1-12)',
-                    'Weekend': 'Is weekend (0 or 1)',
-                    'Emergency_Room_Cases': 'Number of emergency room cases',
-                    'Scheduled_Surgeries': 'Number of scheduled surgeries',
-                    'Trauma_Alert_Level': 'Trauma alert level (0-5)',
-                    'Blood_Type': 'Blood type (A+, A-, AB+, AB-, B+, B-, O+, O-)',
-                    'New_Donations': 'Number of new blood donations',
-                    'Units_Used': 'Blood units used today',
-                    'Starting_Inventory': 'Starting blood inventory',
-                    'Ending_Inventory': 'Ending blood inventory',
-                    'Days_Supply': 'Days of supply remaining',
-                    'Shortage_Flag': 'Shortage indicator (0 or 1)',
-                }
+                'task': 'Predict units sold in the next 7 days for a marketplace listing',
+                'categories': ef.CATEGORIES,
+                'fields': [f for f in ef.RAW_FIELDS if f != 'listing_id'],
+                'features': ef.FEATURE_NAMES,
+                'description': ef.FIELD_DESCRIPTIONS,
             }), 200
         except Exception as e:
             self.log(f'Error getting feature info: {e}', 'ERROR')
             return jsonify({'error': str(e)}), 500
 
     def predict(self):
-        """Make prediction using the trained global model"""
+        """Predict 7-day unit sales for a listing using the trained global model.
+
+        Body: {"listing": {"category": "electronics", "price": 199, ...}}
+        """
         try:
             data = request.get_json()
-            if not data:
-                return jsonify({'error': 'No data provided'}), 400
-            
-            # Check if model exists
+            if not data or 'listing' not in data:
+                return jsonify({'error': 'Provide {"listing": {...}}'}), 400
+
             model_path = os.path.join(os.path.dirname(__file__), 'global_weights.pth')
             if not os.path.exists(model_path):
                 return jsonify({'error': 'No trained model available. Please train the model first.'}), 404
-            
-            # Load the model
+
             from model import Model
-            device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-            model = Model(13).to(device)
-            model.load_state_dict(torch.load(model_path, weights_only=False))
+            model = Model(ef.NUM_FEATURES)
+            model.load_state_dict(torch.load(model_path, map_location='cpu', weights_only=False))
             model.eval()
-            
-            # Get features from request - expecting a sequence of 7 days
-            # Each day has 13 features
-            features = data.get('features', None)
-            
-            if features is None:
-                return jsonify({'error': 'No features provided'}), 400
-            
-            # Convert features to tensor
-            # Expected shape: [seq_len, num_features] = [7, 13]
-            features_array = np.array(features, dtype=np.float32)
-            
-            if features_array.ndim == 1:
-                # Single day provided, need 7 days
-                return jsonify({'error': 'Please provide 7 days of data (sequence length = 7)'}), 400
-            
-            if features_array.shape[0] != 7:
-                return jsonify({'error': f'Expected 7 days of data, got {features_array.shape[0]}'}), 400
-            
-            if features_array.shape[1] != 13:
-                return jsonify({'error': f'Expected 13 features per day, got {features_array.shape[1]}'}), 400
-            
-            # Reshape to [batch=1, seq_len=7, features=13]
-            X = torch.tensor(features_array, dtype=torch.float32).unsqueeze(0).to(device)
-            
+
+            listing = data['listing']
+            missing = [f for f in ef.RAW_FIELDS if f not in ('listing_id',) and f not in listing]
+            if missing:
+                return jsonify({'error': f'Missing fields: {", ".join(missing)}'}), 400
+
+            scaler = ef.load_scaler()
+            x = ef.transform_x([ef.raw_to_numeric(listing)], scaler)
             with torch.no_grad():
-                prediction = model(X)
-                pred_value = prediction.item()
-            
-            self.log(f'Prediction made: {pred_value:.2f} units')
-            
+                pred_scaled = model(torch.tensor(x)).item()
+            pred = max(0.0, float(ef.inverse_y(pred_scaled, scaler)))
+            revenue = pred * float(listing['price']) * (1 - float(listing['discount_pct']) / 100.0)
+
+            self.log(f'Prediction made: {pred:.1f} units for {listing.get("category")} listing @ ${listing.get("price")}')
             return jsonify({
-                'prediction': round(pred_value, 2),
-                'unit': 'blood units (Units_Used_tomorrow)',
-                'input_shape': list(features_array.shape),
-                'message': f'Predicted blood units needed tomorrow: {pred_value:.2f}'
+                'prediction': round(pred, 1),
+                'expected_revenue': round(revenue, 2),
+                'unit': 'units sold in next 7 days',
+                'message': f'Expected to sell about {pred:.0f} units in the next 7 days (~${revenue:,.0f} revenue)',
             }), 200
-            
+
         except Exception as e:
             self.log(f'Error making prediction: {e}', 'ERROR')
             return jsonify({'error': str(e)}), 500

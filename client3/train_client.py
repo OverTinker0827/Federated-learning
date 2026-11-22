@@ -20,10 +20,9 @@ def load_preprocessed(pt_path):
     return X_train, y_train
 
 
-def build_dataloader_from_tensors(X, y, batch_size=32, shuffle=False):
+def build_dataloader_from_tensors(X, y, batch_size=32, shuffle=True):
     """
     Build DataLoader from tensors.
-    For time-series data, shuffle=False preserves temporal order.
     """
     ds = TensorDataset(X, y)
     return DataLoader(ds, batch_size=batch_size, shuffle=shuffle)
@@ -145,10 +144,10 @@ class Client:
 
 def main():
     parser = argparse.ArgumentParser(description="Federated learning client using preprocessed data")
-    parser.add_argument("index", nargs='?', default=None, help="index number used in preprocessed filename (e.g. 2 -> blood_bank_data_2_processed.pt)")
+    parser.add_argument("index", nargs='?', default=None, help="index number used in preprocessed filename (e.g. 2 -> ecommerce_data_2_processed.pt)")
     parser.add_argument("--batch-size", type=int, default=32, help="local training batch size")
     parser.add_argument("--epochs", type=int, default=1, help="local training epochs per round")
-    parser.add_argument("--lr", type=float, default=1e-3, help="learning rate")
+    parser.add_argument("--lr", type=float, default=3e-3, help="learning rate")
     parser.add_argument("--device", default=("cuda" if torch.cuda.is_available() else "cpu"), help="device to run training on")
     parser.add_argument("--client-id", type=int, default=None, help="client ID (used by API)")
     parser.add_argument("--server-ip", default=None, help="server IP address (used by API)")
@@ -161,26 +160,26 @@ def main():
         return
     
     # Load preprocessed .pt file created by preprocessing.py
-    pt_path = f"blood_bank_data_{idx}_processed.pt"
+    pt_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), f"ecommerce_data_{idx}_processed.pt")
     
     try:
         X_train, y_train = load_preprocessed(pt_path)
     except FileNotFoundError:
         print(f"Preprocessed file not found: {pt_path}")
-        print("Please run preprocessing.py first to generate the preprocessed data.")
+        print("Please run generate_ecommerce_data.py first to generate the preprocessed data.")
         return
     except Exception as e:
         print(f"Error loading preprocessed data: {e}")
         return
 
-    print(f"Loaded preprocessed data from '{pt_path}'")
+    store = torch.load(pt_path, weights_only=False).get("metadata", {}).get("store", "local store")
+    print(f"Loaded {len(X_train)} local listings for '{store}' from '{os.path.basename(pt_path)}'")
     print(f"X_train shape: {X_train.shape}, y_train shape: {y_train.shape}")
 
     device = torch.device(args.device)
-    # shuffle=False for time-series data to preserve temporal order
-    loader = build_dataloader_from_tensors(X_train, y_train, batch_size=args.batch_size, shuffle=False)
+    loader = build_dataloader_from_tensors(X_train, y_train, batch_size=args.batch_size, shuffle=True)
 
-    model = Model(X_train.shape[2])
+    model = Model(X_train.shape[1])
 
     # Use command-line args if provided, otherwise use Config defaults
     server_ip = args.server_ip if args.server_ip else Config.SERVER_IP
