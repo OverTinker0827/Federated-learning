@@ -4,7 +4,7 @@ import torch
 from torch.utils.data import TensorDataset, DataLoader
 
 from client_com import Client_Com
-from model import Model
+from model import Model, describe
 import torch.nn as nn
 from config import Config
 
@@ -58,6 +58,13 @@ class Client:
                 return False
 
             print("Received weights from server")
+            # payload = {"arch": ..., "state": ...}; rebuild the network if the architecture changed
+            if isinstance(global_weights, dict) and "state" in global_weights:
+                arch = global_weights.get("arch")
+                global_weights = global_weights["state"]
+                if arch and arch != getattr(self.model, "arch", None):
+                    self.model = Model(arch=arch).to(self.device)
+                    print(f"Built model from server architecture: {describe(arch)}")
             self.model.load_state_dict(global_weights)
         except Exception as e:
             print(f"Failed to receive weights: {e}")

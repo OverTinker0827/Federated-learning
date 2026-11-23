@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-from model import Model
+from model import Model, load_arch, describe
 import threading
 import os
 import asyncio
@@ -16,6 +16,8 @@ WEIGHTS_PATH = os.path.join(HERE, "global_weights.pth")
 TEST_DATA_PATH = os.path.join(HERE, "test_data.pt")
 TEST_RESULTS_PATH = os.path.join(HERE, "test_results.json")
 ROUND_METRICS_PATH = os.path.join(HERE, "round_metrics.json")
+MODEL_CONFIG_PATH = os.path.join(HERE, "model_config.json")      # written by the dashboard Model Builder
+GLOBAL_ARCH_PATH = os.path.join(HERE, "global_model_arch.json")  # architecture of global_weights.pth
 
 clients = {}          
 client_count = 0
@@ -231,7 +233,10 @@ def write_round_metrics(history, status):
 
 
 async def federated_training():
-    global_model = Model().to(DEVICE)
+    arch = load_arch(MODEL_CONFIG_PATH)
+    global_model = Model(arch=arch).to(DEVICE)
+    arch = global_model.arch
+    print(f"Model architecture: {describe(arch)}")
     if Config.RESUME and os.path.exists(WEIGHTS_PATH):
         try:
             state = torch.load(WEIGHTS_PATH, map_location=DEVICE)
@@ -273,7 +278,8 @@ async def federated_training():
 
         try:
             print(f"Broadcasting global model to {len(clients)} client(s)")
-            await broadcast_weights(global_model.state_dict())
+            # the architecture travels with the weights so every client builds the same network
+            await broadcast_weights({"arch": arch, "state": global_model.state_dict()})
             if stopped.is_set():
                 break
 
@@ -307,6 +313,8 @@ async def federated_training():
 
     if round_num == Config.ROUNDS and not stopped.is_set():
         torch.save(global_model.state_dict(), WEIGHTS_PATH)
+        with open(GLOBAL_ARCH_PATH, 'w') as fh:
+            json.dump(arch, fh, indent=2)
         print(f"\nTraining completed successfully after {Config.ROUNDS} rounds!")
         print(f"Saved global model to {WEIGHTS_PATH}")
 

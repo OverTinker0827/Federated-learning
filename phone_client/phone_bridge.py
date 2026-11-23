@@ -43,6 +43,7 @@ APP_DIR = os.path.join(HERE, "app")
 PHONE_DATA = os.path.join(HERE, "phone_data.json")
 SERVER_CONFIG = os.path.join(ROOT, "server", "server_config.json")
 ROUND_METRICS = os.path.join(ROOT, "server", "round_metrics.json")
+GLOBAL_ARCH = os.path.join(ROOT, "server", "global_model_arch.json")
 
 DASHBOARD_CLIENT_ID = 3   # which card the phone occupies in dashboard/src/client_config.json
 
@@ -109,6 +110,7 @@ class PhoneBridge:
         self.device = {}
         self.round_reports = []
         self.weights_sent_at = None
+        self.arch = None
 
     def log(self, message, level="INFO"):
         ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -205,11 +207,14 @@ class PhoneBridge:
                         self.status = "complete"
                     self.log("Server signalled training complete")
                     break
-                sd = torch.load(io.BytesIO(self._recv_exact(s, size)), map_location="cpu")
+                payload = torch.load(io.BytesIO(self._recv_exact(s, size)), map_location="cpu")
+                arch = payload.get("arch") if "state" in payload else None
+                sd = payload["state"] if "state" in payload else payload
                 with self.lock:
                     self.round += 1
                     self.template = sd
                     self.global_weights = state_dict_to_json(sd)
+                    self.arch = arch
                     self.update = None
                     update_event.clear()
                     self.status = "weights_ready"
@@ -319,6 +324,7 @@ class PhoneBridge:
             }
             if self.global_weights is not None and self.round > have_round and self.status in ("weights_ready", "phone_training"):
                 st["weights"] = self.global_weights
+                st["arch"] = self.arch
             return st
 
     def dashboard_status(self):
@@ -377,7 +383,7 @@ def create_app(bridge):
             "rounds": cfg.get("rounds"),
             "epochs": cfg.get("epochs"),
             "num_clients": cfg.get("num_clients"),
-            "model": {"name": "DemandNet", "layers": [16, 64, 32, 1]},
+            "model": bridge.arch,
         })
 
     @app.route("/phone/dataset")
@@ -394,7 +400,11 @@ def create_app(bridge):
             return jsonify({"error": "no global model yet"}), 404
         try:
             sd = torch.load(path, map_location="cpu", weights_only=True)
-            return jsonify({"weights": state_dict_to_json(sd), "saved_at": os.path.getmtime(path)})
+            arch = None
+            if os.path.exists(GLOBAL_ARCH):
+                with open(GLOBAL_ARCH) as fh:
+                    arch = json.load(fh)
+            return jsonify({"weights": state_dict_to_json(sd), "arch": arch, "saved_at": os.path.getmtime(path)})
         except Exception as e:
             return jsonify({"error": str(e)}), 500
 

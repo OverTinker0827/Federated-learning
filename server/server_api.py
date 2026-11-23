@@ -70,6 +70,8 @@ class ServerAPI:
         self.app.route('/predict', methods=['POST'])(self.predict)
         self.app.route('/feature-info', methods=['GET'])(self.get_feature_info)
         self.app.route('/round-metrics', methods=['GET'])(self.get_round_metrics)
+        self.app.route('/model-config', methods=['GET'])(self.get_model_config)
+        self.app.route('/model-config', methods=['POST'])(self.save_model_config)
 
     def get_metrics(self):
         """Return evaluation metrics computed by the training server (if any)"""
@@ -84,6 +86,35 @@ class ServerAPI:
         except Exception as e:
             self.log(f'Error getting metrics: {e}', 'ERROR')
             return jsonify({'error': str(e)}), 500
+
+    def get_model_config(self):
+        """Current MLP architecture, presets and builder limits (dashboard Model Builder)."""
+        import model as m
+        here = os.path.dirname(__file__)
+        return jsonify({
+            'arch': m.load_arch(os.path.join(here, 'model_config.json')),
+            'presets': m.PRESETS,
+            'activations': list(m.ACTIVATIONS.keys()),
+            'limits': {'max_hidden_layers': m.MAX_HIDDEN_LAYERS, 'max_units': m.MAX_UNITS,
+                       'input_dim': m.NUM_FEATURES},
+        }), 200
+
+    def save_model_config(self):
+        """Validate and store a new architecture; used by the next training run."""
+        import json
+        import model as m
+        if self.is_running:
+            return jsonify({'error': 'Stop the server before changing the model architecture'}), 409
+        try:
+            arch = m.validate_arch((request.get_json(silent=True) or {}).get('arch'))
+        except (ValueError, TypeError) as e:
+            return jsonify({'error': str(e)}), 400
+        with open(os.path.join(os.path.dirname(__file__), 'model_config.json'), 'w') as fh:
+            json.dump(arch, fh, indent=2)
+        params = m.Model(arch=arch).state_dict()
+        n = sum(v.numel() for v in params.values())
+        self.log(f'Model architecture saved: {m.describe(arch)} ({n} parameters)')
+        return jsonify({'message': 'Architecture saved', 'arch': arch, 'num_params': n}), 200
 
     def get_round_metrics(self):
         """Per-round global model test metrics written by server.py"""
@@ -126,7 +157,8 @@ class ServerAPI:
                 return jsonify({'error': 'No trained model available. Please train the model first.'}), 404
 
             from model import Model
-            model = Model(ef.NUM_FEATURES)
+            from model import load_arch
+            model = Model(arch=load_arch(os.path.join(os.path.dirname(__file__), 'global_model_arch.json')))
             model.load_state_dict(torch.load(model_path, map_location='cpu', weights_only=False))
             model.eval()
 

@@ -95,6 +95,16 @@ export const ServerAPI = {
     }
   },
 
+  async getModelConfig() {
+    const response = await axios.get(`${this.baseURL}/model-config`);
+    return response.data;
+  },
+
+  async saveModelConfig(arch) {
+    const response = await axios.post(`${this.baseURL}/model-config`, { arch });
+    return response.data;
+  },
+
   async predict(listing) {
     try {
       const response = await axios.post(`${this.baseURL}/predict`, { listing });

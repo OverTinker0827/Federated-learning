@@ -318,6 +318,12 @@
       renderState(S.state);
       log(`Round ${round}: downloaded global model (${fmtBytes(st.__bytes)})`);
       $('st-down').textContent = fmtBytes(S.bytesDown);
+      if (st.arch && JSON.stringify(st.arch) !== JSON.stringify(S.net.arch)) {
+        S.net = new FLTrainer.DemandNet(st.arch);   // server changed the architecture
+        $('param-count').textContent = S.net.numParams.toLocaleString();
+        const sizes = [st.arch.input_dim, ...st.arch.layers.map(l => l.units)].join('→');
+        log(`Model architecture from server: ${st.arch.name} (${sizes}, ${S.net.numParams} params)`);
+      }
       S.net.loadState(st.weights);
       S.net.resetOptimizer();
       await sleep(500);
@@ -514,7 +520,7 @@
   async function fetchFinalModel(silent = false) {
     try {
       const fm = await api('/phone/final-model', { timeout: 15000 });
-      const net = new FLTrainer.DemandNet();
+      const net = new FLTrainer.DemandNet(fm.arch || FLTrainer.PRESET_1);
       net.loadState(fm.weights);
       S.finalNet = net;
       emit('fl:model', net);

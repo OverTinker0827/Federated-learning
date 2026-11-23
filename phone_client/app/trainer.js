@@ -1,28 +1,45 @@
 /*
- * DemandNet trainer - runs entirely on the phone, no libraries.
+ * MLP trainer - runs entirely on the phone, no libraries.
  *
- * Mirrors server/model.py exactly:
- *   fc1: Linear(16, 64) -> ReLU -> fc2: Linear(64, 32) -> ReLU -> fc3: Linear(32, 1)
- * Weights use PyTorch's layout: "<layer>.weight" is [out, in] row-major,
- * "<layer>.bias" is [out]. Loss is MSE, optimiser is Adam with PyTorch's
- * update rule, re-created every round just like clientN/train_client.py.
+ * Mirrors server/model.py: the network is built from the same architecture
+ * description the server sends with every round,
+ *   {input_dim, layers: [{units, activation}, ...]}   (last layer = 1 linear output)
+ * Weights use PyTorch's layout: "fcN.weight" is [out, in] row-major, "fcN.bias" is [out].
+ * Loss is MSE, optimiser is Adam with PyTorch's update rule, re-created every round
+ * just like clientN/train_client.py.
  */
 (function (root) {
   'use strict';
 
-  const LAYERS = ['fc1', 'fc2', 'fc3'];
+  const PRESET_1 = {
+    name: 'Preset 1 - DemandNet',
+    input_dim: 16,
+    layers: [{ units: 64, activation: 'relu' }, { units: 32, activation: 'relu' }, { units: 1, activation: 'linear' }],
+  };
+
+  // f(z) and f'(z) expressed through the activation output a = f(z)
+  const ACT = {
+    relu: { f: z => (z > 0 ? z : 0), d: a => (a > 0 ? 1 : 0) },
+    leaky_relu: { f: z => (z > 0 ? z : 0.01 * z), d: a => (a > 0 ? 1 : 0.01) },
+    tanh: { f: z => Math.tanh(z), d: a => 1 - a * a },
+    sigmoid: { f: z => 1 / (1 + Math.exp(-z)), d: a => a * (1 - a) },
+    linear: { f: z => z, d: () => 1 },
+  };
 
   class DemandNet {
-    constructor(sizes = [16, 64, 32, 1]) {
-      this.sizes = sizes;
+    constructor(arch = PRESET_1) {
+      this.arch = arch;
       this.layers = [];
-      for (let l = 0; l < sizes.length - 1; l++) {
-        const nin = sizes[l], nout = sizes[l + 1];
+      let nin = arch.input_dim;
+      arch.layers.forEach((spec, l) => {
+        if (!ACT[spec.activation]) throw new Error(`unknown activation ${spec.activation}`);
+        const nout = spec.units;
         const bound = 1 / Math.sqrt(nin);
         const W = new Float32Array(nout * nin).map(() => (Math.random() * 2 - 1) * bound);
         const b = new Float32Array(nout).map(() => (Math.random() * 2 - 1) * bound);
-        this.layers.push({ name: LAYERS[l], nin, nout, W, b });
-      }
+        this.layers.push({ name: `fc${l + 1}`, nin, nout, W, b, act: ACT[spec.activation] });
+        nin = nout;
+      });
       this.resetOptimizer();
     }
 
@@ -71,7 +88,7 @@
           let s = L.b[o];
           const row = o * L.nin;
           for (let i = 0; i < L.nin; i++) s += L.W[row + i] * a[i];
-          z[o] = (l < this.layers.length - 1) ? (s > 0 ? s : 0) : s;
+          z[o] = L.act.f(s);
         }
         a = z;
         acts[l + 1] = a;
@@ -88,14 +105,16 @@
     trainBatch(Xb, yb, lr) {
       const B = Xb.length;
       const grads = this.layers.map(L => ({ W: new Float32Array(L.W.length), b: new Float32Array(L.b.length) }));
+      const nL = this.layers.length;
       let loss = 0;
       const acts = [];
       for (let n = 0; n < B; n++) {
         const pred = this._forward(Xb[n], acts);
         const err = pred - yb[n];
         loss += err * err;
-        let delta = new Float32Array([2 * err / B]); // dL/d(out)
-        for (let l = this.layers.length - 1; l >= 0; l--) {
+        // dL/dz of the output layer
+        let delta = new Float32Array([(2 * err / B) * this.layers[nL - 1].act.d(pred)]);
+        for (let l = nL - 1; l >= 0; l--) {
           const L = this.layers[l], g = grads[l], ain = acts[l];
           for (let o = 0; o < L.nout; o++) {
             const d = delta[o];
@@ -105,12 +124,14 @@
             for (let i = 0; i < L.nin; i++) g.W[row + i] += d * ain[i];
           }
           if (l > 0) {
+            const dPrev = this.layers[l - 1].act.d;
             const prev = new Float32Array(L.nin);
             for (let i = 0; i < L.nin; i++) {
-              if (ain[i] <= 0) continue; // ReLU derivative
+              const di = dPrev(ain[i]);
+              if (di === 0) continue;
               let s = 0;
               for (let o = 0; o < L.nout; o++) s += L.W[o * L.nin + i] * delta[o];
-              prev[i] = s;
+              prev[i] = s * di;
             }
             delta = prev;
           }
@@ -165,7 +186,7 @@
     return s / y.length;
   }
 
-  const api = { DemandNet, mse };
+  const api = { DemandNet, mse, PRESET_1, ACTIVATIONS: Object.keys(ACT) };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.FLTrainer = api;
 })(typeof self !== 'undefined' ? self : this);

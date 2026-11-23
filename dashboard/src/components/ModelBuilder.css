@@ -1,0 +1,42 @@
+.model-builder { padding: 20px; max-width: 1000px; margin: 0 auto; }
+.mb-header { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
+.mb-header h2 { margin: 0 0 4px; }
+.mb-sub { margin: 0; color: #6b7280; font-size: 14px; }
+.mb-presets { display: flex; gap: 8px; }
+.mb-presets select, .mb-name input, .mb-field input, .mb-field select {
+  padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; background: #fff;
+}
+.mb-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+
+.mb-diagram { width: 100%; height: auto; display: block; }
+.mb-edge { stroke: #cbd5e1; stroke-width: .6; opacity: .7; }
+.mb-node { stroke: #fff; stroke-width: 1.5; }
+.mb-more { font-size: 11px; fill: #6b7280; text-anchor: middle; }
+.mb-col-title { font-size: 12px; font-weight: 600; fill: #111827; text-anchor: middle; }
+.mb-col-sub { font-size: 11px; fill: #6b7280; text-anchor: middle; }
+.mb-stats { display: flex; gap: 18px; flex-wrap: wrap; font-size: 13px; color: #4b5563; border-top: 1px solid #f3f4f6; padding-top: 10px; margin-top: 6px; }
+.mb-unsaved { color: #b45309; font-weight: 600; }
+
+.mb-name { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.mb-name label { font-weight: 600; font-size: 14px; }
+.mb-name input { flex: 1; max-width: 360px; }
+.mb-layer { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 10px 12px; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 8px; }
+.mb-fixed { background: #f9fafb; color: #4b5563; font-size: 14px; }
+.mb-layer-title { font-weight: 600; min-width: 72px; color: #111827; }
+.mb-field { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #4b5563; }
+.mb-field input { width: 80px; }
+.mb-range { flex: 1; min-width: 120px; }
+.mb-layer-actions { display: flex; gap: 4px; margin-left: auto; }
+.mb-layer-actions button { width: 30px; height: 30px; border: 1px solid #d1d5db; border-radius: 6px; background: #fff; cursor: pointer; }
+.mb-layer-actions button:disabled { opacity: .4; cursor: default; }
+
+.mb-btn { padding: 8px 14px; border: 1px solid #d1d5db; border-radius: 6px; background: #fff; font-size: 14px; font-weight: 500; cursor: pointer; }
+.mb-btn:disabled { opacity: .5; cursor: default; }
+.mb-primary { background: #2563eb; border-color: #2563eb; color: #fff; }
+.mb-add { width: 100%; margin: 4px 0 8px; border-style: dashed; color: #2563eb; }
+.mb-actions { display: flex; justify-content: flex-end; gap: 10px; }
+
+.mb-msg { padding: 10px 14px; border-radius: 8px; font-size: 14px; margin-bottom: 12px; }
+.mb-msg-success { background: #ecfdf5; color: #047857; }
+.mb-msg-error { background: #fef2f2; color: #b91c1c; }
+.mb-msg-info { background: #eff6ff; color: #1d4ed8; }

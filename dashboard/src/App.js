@@ -4,6 +4,7 @@ import ServerControl from './components/ServerControl';
 import ClientControl from './components/ClientControl';
 import LogsViewer from './components/LogsViewer';
 import TestPanel from './components/TestPanel';
+import ModelBuilder from './components/ModelBuilder';
 import { ServerAPI } from './services/api';
 
 function App() {
@@ -81,6 +82,12 @@ function App() {
           >
             Test Model
           </button>
+          <button
+            className={`tab-btn ${activeTab === 'model' ? 'active' : ''}`}
+            onClick={() => setActiveTab('model')}
+          >
+            Model Builder
+          </button>
         </nav>
 
         <main className="tab-content">
@@ -99,6 +106,7 @@ function App() {
           )}
           {activeTab === 'logs' && <LogsViewer numClients={numClients} />}
           {activeTab === 'test' && <TestPanel />}
+          {activeTab === 'model' && <ModelBuilder serverRunning={serverRunning} />}
         </main>
       </div>
     </div>

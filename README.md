@@ -100,6 +100,7 @@ Chrome allows it, but Android slows down background tabs.
 * `phone_client/phone_bridge.py`: phone ↔ FL server bridge, plus the dashboard client API
 * `phone_client/app/`: the installable web app (`shop.js` is the storefront, `app.js` the on-device AI screen, `trainer.js` the JS training code)
 * `start_demo.sh`: starts the laptop-side processes
+* **Model Builder** (dashboard tab): choose hidden layers, neurons per layer and activations (ReLU, Leaky ReLU, Tanh, Sigmoid, Linear), or load *Preset 1 - DemandNet*. Saved to `server/model_config.json` (stop the server first). The server sends the architecture with each round's weights, so laptop clients and the phone build the same network automatically.
 
 ---
 
